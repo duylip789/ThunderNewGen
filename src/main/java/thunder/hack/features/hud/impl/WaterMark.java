@@ -1,5 +1,4 @@
 package thunder.hack.features.hud.impl;
-
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.DrawContext;
@@ -54,7 +53,7 @@ public class WaterMark extends HudElement {
         if (mode.getValue() == Mode.Big) {
             Render2DEngine.drawHudBase(context.getMatrices(), getPosX(), getPosY(), 106, 30, HudEditor.hudRound.getValue());
             FontRenderers.thglitch.drawString(context.getMatrices(), "THUNDERHACK", getPosX() + 5.5, getPosY() + 5, -1);
-            FontRenderers.monsterrat.drawGradientString(context.getMatrices(), "recode", getPosX() + 35.5f, getPosY() + 21f, 1);
+            FontRenderers.monsterrat.drawGradientString(context.getMatrices(), "newgen", getPosX() + 35.5f, getPosY() + 21f, 1);
             setBounds(getPosX(), getPosY(), 106, 30);
         } else if (mode.getValue() == Mode.Small) {
             if (HudEditor.hudStyle.is(HudEditor.HudStyle.Blurry)) {
@@ -69,7 +68,7 @@ public class WaterMark extends HudElement {
 
                 Render2DEngine.drawRect(context.getMatrices(), getPosX() + 13, getPosY() + 1.5f, 0.5f, 11, new Color(0x44FFFFFF, true));
 
-                FontRenderers.sf_bold.drawGradientString(context.getMatrices(), "Recode", getPosX() + 18, getPosY() + 5, 20);
+                FontRenderers.sf_bold.drawGradientString(context.getMatrices(), "NewGen", getPosX() + 18, getPosY() + 5, 20);
 
                 RenderSystem.blendFunc(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
                 RenderSystem.setShaderTexture(0, TextureStorage.miniLogo);
