@@ -226,6 +226,7 @@ public class ModuleManager implements IManager {
     public static BowPop bowPop = new BowPop();
     public static XCarry xCarry = new XCarry();
     public static Trails trails = new Trails();
+    public static MaceSwap maceSwap = new MaceSwap();
     public static Strafe strafe = new Strafe();
     public static Spider spider = new Spider();
     public static NoSlow noSlow = new NoSlow();
