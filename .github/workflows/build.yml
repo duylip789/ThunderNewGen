@@ -1,7 +1,5 @@
-name: Build-Bounce-1.21
-on: 
-  workflow_dispatch: # Dong nay giup hien nut "Run workflow" de ban bam tay
-  push:              # Tu dong build moi khi ban sua code (xoa module)
+name: Build-Bounce-1.21-Fixed
+on: [workflow_dispatch, push]
 
 jobs:
   build:
@@ -16,15 +14,14 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Permission
+      - name: Grant Execute Permission
         run: chmod +x gradlew
 
-      - name: Run Build
-        # Day chinh la lenh tuong duong .\gradlew build tren may ban
+      - name: Build with Gradle
         run: ./gradlew build -x test --no-daemon
 
-      - name: Save File Jar
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Bounce-1.21-Jar
+          name: Bounce-Client-1.21
           path: build/libs/*.jar
