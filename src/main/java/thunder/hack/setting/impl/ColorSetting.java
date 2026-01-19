@@ -7,6 +7,27 @@ import thunder.hack.utility.render.Render2DEngine;
 import java.awt.*;
 
 public final class ColorSetting {
+    // --- PHẦN THÊM MỚI (CÁC MÀU GỐC VÀ MÀU THEO YÊU CẦU) ---
+    
+    // SUNSET (Giữa vàng nhạt và đậm)
+    public static final ColorSetting SUNSET = new ColorSetting(new Color(255, 145, 20)); 
+    public static final ColorSetting YELLOW_SUNSET = new ColorSetting(new Color(255, 190, 0)); 
+
+    // RUBY (Đỏ đậm quý phái)
+    public static final ColorSetting RUBY = new ColorSetting(new Color(224, 17, 95));
+    public static final ColorSetting DARK_RUBY = new ColorSetting(new Color(155, 17, 30));
+
+    // BLACK & GRAY (Đen và Xám trung gian)
+    public static final ColorSetting BLACK = new ColorSetting(new Color(0, 0, 0));
+    public static final ColorSetting MIDDLE_GRAY = new ColorSetting(new Color(45, 45, 45)); // Giữa đen và xám
+
+    // MÀU GỐC CƠ BẢN
+    public static final ColorSetting RED = new ColorSetting(new Color(255, 0, 0));
+    public static final ColorSetting GREEN = new ColorSetting(new Color(0, 255, 0));
+    public static final ColorSetting BLUE = new ColorSetting(new Color(0, 0, 255));
+    public static final ColorSetting WHITE = new ColorSetting(new Color(255, 255, 255));
+    // -----------------------------------------------------
+
     private int color;
     private final int defaultColor;
     private boolean rainbow;
