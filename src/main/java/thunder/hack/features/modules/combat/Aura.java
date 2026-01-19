@@ -154,7 +154,7 @@ public class Aura extends Module {
     public Box resolvedBox;
     static boolean wasTargeted = false;
 
-    // --- NEWGEN ESP DATA ---
+    // --- NEWGEN TRAIL DATA ---
     private final List<TrailParticle> trailParticles = new ArrayList<>();
 
     private static class TrailParticle {
@@ -204,18 +204,13 @@ public class Aura extends Module {
         return true;
     }
 
-    private boolean skipRayTraceCheck() {
-        return rotationMode.getValue() == Mode.None || rayTrace.getValue() == RayTrace.OFF || rotationMode.is(Mode.Grim) || (rotationMode.is(Mode.Interact) && (interactTicks.getValue() <= 1 || mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext()));
-    }
+    private boolean skipRayTraceCheck() { return rotationMode.getValue() == Mode.None || rayTrace.getValue() == RayTrace.OFF || rotationMode.is(Mode.Grim) || (rotationMode.is(Mode.Interact) && (interactTicks.getValue() <= 1 || mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext())); }
 
     public void attack() {
-        Criticals.cancelCrit = true;
-        ModuleManager.criticals.doCrit();
+        Criticals.cancelCrit = true; ModuleManager.criticals.doCrit();
         int prevSlot = switchMethod();
         mc.interactionManager.attackEntity(mc.player, target);
-        Criticals.cancelCrit = false;
-        swingHand();
-        hitTicks = getHitTicks();
+        Criticals.cancelCrit = false; swingHand(); hitTicks = getHitTicks();
         if (prevSlot != -1) InventoryUtility.switchTo(prevSlot);
     }
 
@@ -237,18 +232,14 @@ public class Aura extends Module {
     private void disableSprint() { mc.player.setSprinting(false); mc.options.sprintKey.setPressed(false); sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING)); }
     private void enableSprint() { mc.player.setSprinting(true); mc.options.sprintKey.setPressed(true); sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING)); }
 
-    public void resolvePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity player : mc.world.getPlayers()) if (player instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) player).resolve(resolver.getValue()); }
-    public void restorePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity player : mc.world.getPlayers()) if (player instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) player).releaseResolver(); }
+    public void resolvePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity p : mc.world.getPlayers()) if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).resolve(resolver.getValue()); }
+    public void restorePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity p : mc.world.getPlayers()) if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).releaseResolver(); }
 
     public void handleKill() { if (target instanceof LivingEntity && (((LivingEntity) target).getHealth() <= 0 || ((LivingEntity) target).isDead())) Managers.NOTIFICATION.publicity("Aura", isRu() ? "Цель успешно нейтрализована!" : "Target successfully neutralized!", 3, Notification.Type.SUCCESS); }
 
     private int switchMethod() {
-        int prevSlot = -1;
-        SearchInvResult swordResult = InventoryUtility.getSwordHotBar();
-        if (swordResult.found() && switchMode.getValue() != Switch.None) {
-            if (switchMode.getValue() == Switch.Silent) prevSlot = mc.player.getInventory().selectedSlot;
-            swordResult.switchTo();
-        }
+        int prevSlot = -1; SearchInvResult swordResult = InventoryUtility.getSwordHotBar();
+        if (swordResult.found() && switchMode.getValue() != Switch.None) { if (switchMode.getValue() == Switch.Silent) prevSlot = mc.player.getInventory().selectedSlot; swordResult.switchTo(); }
         return prevSlot;
     }
 
@@ -256,8 +247,7 @@ public class Aura extends Module {
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
-        if (!pauseTimer.passedMs(1000)) return;
-        if (mc.player.isUsingItem() && pauseWhileEating.getValue()) return;
+        if (!pauseTimer.passedMs(1000) || (mc.player.isUsingItem() && pauseWhileEating.getValue())) return;
         if(pauseBaritone.getValue() && ThunderHack.baritone){
             boolean isTargeted = (target != null);
             if (isTargeted && !wasTargeted) { BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("pause"); wasTargeted = true; }
@@ -309,7 +299,6 @@ public class Aura extends Module {
         if (axeSlot == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
         if (!((PlayerEntity) target).isUsingItem() && !instant) return false;
         if (((PlayerEntity) target).getOffHandStack().getItem() != Items.SHIELD && ((PlayerEntity) target).getMainHandStack().getItem() != Items.SHIELD) return false;
-
         if (axeSlot >= 9) {
             mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
             sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
@@ -367,14 +356,27 @@ public class Aura extends Module {
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+            
+            // --- NEWGEN ESP: TAPERED & GLOWING TRAILS ---
             case NewGen -> {
-                int count = 3; if (trailParticles.isEmpty()) for (int i = 0; i < count; i++) trailParticles.add(new TrailParticle(i * (Math.PI * 2 / count), 0, 0.05 + (i * 0.01)));
+                int count = 3; 
+                if (trailParticles.isEmpty()) for (int i = 0; i < count; i++) trailParticles.add(new TrailParticle(i * (Math.PI * 2 / count), 0, 0.05 + (i * 0.01)));
                 double time = System.currentTimeMillis() / 1000.0;
                 for (TrailParticle p : trailParticles) {
-                    p.theta += p.speed; p.yOffset = Math.sin(time + p.theta) * 0.75 + 1.0; 
+                    p.theta += p.speed; 
+                    p.yOffset = Math.sin(time + p.theta) * 0.75 + 1.0; 
                     Vec3d pos = target.getPos().add(Math.cos(p.theta) * 0.7, p.yOffset, Math.sin(p.theta) * 0.7);
-                    p.history.add(pos); if (p.history.size() > 15) p.history.remove(0); 
-                    for (int i = 1; i < p.history.size(); i++) Render3DEngine.drawLine(p.history.get(i - 1), p.history.get(i), HudEditor.getColor(i * 10));
+                    p.history.add(pos); if (p.history.size() > 18) p.history.remove(0); 
+
+                    for (int i = 1; i < p.history.size(); i++) {
+                        // Vẽ dải sáng vuốt đuôi với màu từ HudEditor
+                        Render3DEngine.drawLine(p.history.get(i - 1), p.history.get(i), HudEditor.getColor(i * 5));
+                        
+                        // Tạo điểm sáng rực rỡ (Glow) ở ngay đầu tia
+                        if (i == p.history.size() - 1) {
+                            Render3DEngine.drawSphere(stack, p.history.get(i), 0.12f, HudEditor.getColor(200));
+                        }
+                    }
                 }
             }
         }
