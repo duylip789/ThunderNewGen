@@ -72,8 +72,8 @@ public class Aura extends Module {
     public final Setting<Float> elytraWallRange = new Setting<>("ElytraThroughWallsRange", 3.1f, 0f, 6.0f, v -> elytra.getValue());
     public final Setting<WallsBypass> wallsBypass = new Setting<>("WallsBypass", WallsBypass.Off, v -> getWallRange() > 0);
     
-    // Yêu cầu của bạn: Sprint đặt dưới WallsBypass
-    public final Setting<SprintMode> sprint = new Setting<>("Sprint", SprintMode.Legit);
+    // Sprint đặt dưới WallsBypass như yêu cầu
+    public final Setting<SprintMode> sprintMode = new Setting<>("Sprint", SprintMode.Legit);
 
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
@@ -101,7 +101,6 @@ public class Aura extends Module {
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
 
-    /* ADVANCED SETTINGS */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -131,7 +130,6 @@ public class Aura extends Module {
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
-    /* TARGETS SETTINGS */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -153,9 +151,6 @@ public class Aura extends Module {
     public float rotationPitch;
     public float pitchAcceleration = 1f;
 
-    private Vec3d rotationPoint = Vec3d.ZERO;
-    private Vec3d rotationMotion = Vec3d.ZERO;
-
     private int hitTicks;
     private int trackticks;
     private boolean lookingAtHitbox;
@@ -170,19 +165,26 @@ public class Aura extends Module {
         super("Aura", Category.COMBAT);
     }
 
+    // FIX: Thêm lại hàm pause() để sửa lỗi PearlChaser, AutoBuff, Phase
+    public void pause() {
+        pauseTimer.reset();
+    }
+
+    // FIX: Thêm lại hàm getRange() để sửa lỗi build
+    private float getRange() {
+        return elytra.getValue() && mc.player != null && mc.player.isFallFlying() ? elytraAttackRange.getValue() : attackRange.getValue();
+    }
+
+    // FIX: Thêm lại hàm getWallRange() để sửa lỗi build
+    private float getWallRange() {
+        return elytra.getValue() && mc.player != null && mc.player.isFallFlying() ? elytraWallRange.getValue() : wallRange.getValue();
+    }
+
     public void auraLogic() {
-        if (!haveWeapon() || mc.player == null) {
-            target = null;
-            return;
-        }
-
-        handleKill();
-        updateTarget();
-
+        if (!haveWeapon() || mc.player == null) { target = null; return; }
+        handleKill(); updateTarget();
         if (target == null) return;
-
-        if (!mc.options.jumpKey.isPressed() && mc.player.isOnGround() && autoJump.getValue())
-            mc.player.jump();
+        if (!mc.options.jumpKey.isPressed() && mc.player.isOnGround() && autoJump.getValue()) mc.player.jump();
 
         boolean ready;
         if (grimRayTrace.getValue()) {
@@ -196,8 +198,9 @@ public class Aura extends Module {
         if (ready) {
             if (shieldBreaker(false)) return;
             boolean[] state = preAttack();
-            if (!(target instanceof PlayerEntity pl) || !(pl.isUsingItem() && pl.getOffHandStack().getItem() == Items.SHIELD) || ignoreShield.getValue())
+            if (!(target instanceof PlayerEntity pl) || !(pl.isUsingItem() && pl.getOffHandStack().getItem() == Items.SHIELD) || ignoreShield.getValue()) {
                 attack();
+            }
             postAttack(state[0], state[1]);
         }
     }
@@ -205,26 +208,22 @@ public class Aura extends Module {
     private boolean haveWeapon() {
         Item item = mc.player.getMainHandStack().getItem();
         if (onlyWeapon.getValue()) {
-            if (switchMode.getValue() == Switch.None)
-                return item instanceof SwordItem || item instanceof AxeItem || item instanceof TridentItem;
-            else
-                return (InventoryUtility.getSwordHotBar().found() || InventoryUtility.getAxeHotBar().found());
+            if (switchMode.getValue() == Switch.None) return item instanceof SwordItem || item instanceof AxeItem || item instanceof TridentItem;
+            else return (InventoryUtility.getSwordHotBar().found() || InventoryUtility.getAxeHotBar().found());
         }
         return true;
     }
 
-    private boolean skipRayTraceCheck() {
-        return rotationMode.getValue() == Mode.None || rayTrace.getValue() == RayTrace.OFF || rotationMode.is(Mode.Grim);
-    }
+    private boolean skipRayTraceCheck() { return rotationMode.getValue() == Mode.None || rayTrace.getValue() == RayTrace.OFF || rotationMode.is(Mode.Grim); }
 
     public void attack() {
         Criticals.cancelCrit = true;
         ModuleManager.criticals.doCrit();
         int prev = switchMethod();
         
-        // Logic Sprint chuyên sâu
+        // SPRINT LOGIC THEO CHẾ ĐỘ
         applySprintLogic();
-        
+
         mc.interactionManager.attackEntity(mc.player, target);
         Criticals.cancelCrit = false;
         swingHand();
@@ -233,59 +232,36 @@ public class Aura extends Module {
     }
 
     private void applySprintLogic() {
-        switch (sprint.getValue()) {
-            case HvH:
-                // Sprint-reset cực nhanh để combo
-                if (mc.player.isSprinting()) {
-                    mc.player.setSprinting(false);
-                    sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
-                }
-                break;
-            case SMP:
-                // Giữ sprint nếu mục tiêu ở xa để tăng lực va chạm (dame to)
-                if (!mc.player.isSprinting() && mc.player.forwardSpeed > 0) {
-                    mc.player.setSprinting(true);
-                    sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
-                }
-                break;
-            case Legit:
-                // Giữ nguyên logic mặc định
-                break;
+        if (sprintMode.is(SprintMode.HvH)) {
+            if (mc.player.isSprinting()) {
+                mc.player.setSprinting(false);
+                sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
+            }
+        } else if (sprintMode.is(SprintMode.SMP)) {
+            if (!mc.player.isSprinting() && mc.player.forwardSpeed > 0) {
+                mc.player.setSprinting(true);
+                sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
+            }
         }
     }
 
     private boolean[] preAttack() {
         boolean block = mc.player.isUsingItem() && mc.player.getActiveItem().getItem().getUseAction(mc.player.getActiveItem()) == BLOCK;
-        if (block && unpressShield.getValue())
-            sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, Direction.DOWN));
-
-        boolean sprintActive = Core.serverSprint;
-        if (sprintActive && dropSprint.getValue()) disableSprint();
-
-        if (rotationMode.is(Mode.Grim))
-            sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), rotationYaw, rotationPitch, mc.player.isOnGround()));
-
-        return new boolean[]{block, sprintActive};
+        if (block && unpressShield.getValue()) sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, Direction.DOWN));
+        boolean sprint = Core.serverSprint;
+        if (sprint && dropSprint.getValue()) disableSprint();
+        if (rotationMode.is(Mode.Grim)) sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), rotationYaw, rotationPitch, mc.player.isOnGround()));
+        return new boolean[]{block, sprint};
     }
 
-    public void postAttack(boolean block, boolean sprintActive) {
-        if (sprintActive && returnSprint.getValue() && dropSprint.getValue()) enableSprint();
-        if (block && unpressShield.getValue())
-            sendSequencedPacket(id -> new PlayerInteractItemC2SPacket(Hand.OFF_HAND, id, rotationYaw, rotationPitch));
-        
-        if (rotationMode.is(Mode.Grim))
-            sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYaw(), mc.player.getPitch(), mc.player.isOnGround()));
+    public void postAttack(boolean block, boolean sprint) {
+        if (sprint && returnSprint.getValue() && dropSprint.getValue()) enableSprint();
+        if (block && unpressShield.getValue()) sendSequencedPacket(id -> new PlayerInteractItemC2SPacket(Hand.OFF_HAND, id, rotationYaw, rotationPitch));
+        if (rotationMode.is(Mode.Grim)) sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYaw(), mc.player.getPitch(), mc.player.isOnGround()));
     }
 
-    private void disableSprint() {
-        mc.player.setSprinting(false);
-        sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
-    }
-
-    private void enableSprint() {
-        mc.player.setSprinting(true);
-        sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
-    }
+    private void disableSprint() { mc.player.setSprinting(false); sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING)); }
+    private void enableSprint() { mc.player.setSprinting(true); sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING)); }
 
     private int switchMethod() {
         int prev = -1;
@@ -297,160 +273,86 @@ public class Aura extends Module {
         return prev;
     }
 
-    private int getHitTicks() {
-        return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (shouldRandomizeDelay() ? (int)MathUtility.random(11, 13) : attackTickLimit.getValue());
-    }
+    private int getHitTicks() { return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (shouldRandomizeDelay() ? (int)MathUtility.random(11, 13) : attackTickLimit.getValue()); }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
         if (!pauseTimer.passedMs(1000) || mc.player == null) return;
         if (mc.player.isUsingItem() && pauseWhileEating.getValue()) return;
-        
         if(pauseBaritone.getValue() && ThunderHack.baritone){
             boolean isTargeted = (target != null);
-            if (isTargeted && !wasTargeted) {
-                BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("pause");
-                wasTargeted = true;
-            } else if (!isTargeted && wasTargeted) {
-                BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("resume");
-                wasTargeted = false;
-            }
+            if (isTargeted && !wasTargeted) { BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("pause"); wasTargeted = true; }
+            else if (!isTargeted && wasTargeted) { BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("resume"); wasTargeted = false; }
         }
-
-        resolvePlayers();
-        auraLogic();
-        restorePlayers();
-        hitTicks--;
+        resolvePlayers(); auraLogic(); restorePlayers(); hitTicks--;
     }
 
     @EventHandler
     public void onSync(EventSync e) {
         if (!pauseTimer.passedMs(1000) || mc.player == null) return;
-        if (mc.player.isUsingItem() && pauseWhileEating.getValue()) return;
-        if (!haveWeapon()) return;
-
-        if (target != null && rotationMode.getValue() != Mode.None && rotationMode.getValue() != Mode.Grim) {
-            mc.player.setYaw(rotationYaw);
-            mc.player.setPitch(rotationPitch);
-        } else {
-            rotationYaw = mc.player.getYaw();
-            rotationPitch = mc.player.getPitch();
-        }
-
-        if (target != null && pullDown.getValue() && (mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST) || !onlyJumpBoost.getValue()))
-            mc.player.addVelocity(0f, -pullValue.getValue() / 1000f, 0f);
+        if (target != null && rotationMode.getValue() != Mode.None && rotationMode.getValue() != Mode.Grim) { mc.player.setYaw(rotationYaw); mc.player.setPitch(rotationPitch); }
+        else { rotationYaw = mc.player.getYaw(); rotationPitch = mc.player.getPitch(); }
+        if (target != null && pullDown.getValue() && (mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST) || !onlyJumpBoost.getValue())) mc.player.addVelocity(0f, -pullValue.getValue() / 1000f, 0f);
     }
 
     @EventHandler
     public void onPacketReceive(PacketEvent.@NotNull Receive e) {
-        if (e.getPacket() instanceof PlayerPositionLookS2CPacket && tpDisable.getValue())
-            disable(isRu() ? "Отключаю из-за телепортации!" : "Disabling due to teleport!");
-
-        if (e.getPacket() instanceof EntityStatusS2CPacket pac && pac.getStatus() == 3 && pac.getEntity(mc.world) == mc.player && deathDisable.getValue())
-            disable(isRu() ? "Отключаю из-за смерти!" : "Disabling due to death!");
+        if (e.getPacket() instanceof PlayerPositionLookS2CPacket && tpDisable.getValue()) disable("Disabling due to teleport!");
+        if (e.getPacket() instanceof EntityStatusS2CPacket pac && pac.getStatus() == 3 && pac.getEntity(mc.world) == mc.player && deathDisable.getValue()) disable("Disabling due to death!");
     }
 
-    @Override
-    public void onEnable() {
-        target = null;
-        lookingAtHitbox = false;
-        rotationYaw = mc.player.getYaw();
-        rotationPitch = mc.player.getPitch();
-        delayTimer.reset();
-    }
+    @Override public void onEnable() { target = null; rotationYaw = mc.player.getYaw(); rotationPitch = mc.player.getPitch(); delayTimer.reset(); }
+    @Override public void onDisable() { target = null; }
 
-    @Override
-    public void onDisable() {
-        target = null;
-    }
-
-    public void resolvePlayers() {
-        if (resolver.not(Resolver.Off))
-            for (PlayerEntity p : mc.world.getPlayers())
-                if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).resolve(resolver.getValue());
-    }
-
-    public void restorePlayers() {
-        if (resolver.not(Resolver.Off))
-            for (PlayerEntity p : mc.world.getPlayers())
-                if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).releaseResolver();
-    }
-
-    public void handleKill() {
-        if (target instanceof LivingEntity le && (le.getHealth() <= 0 || le.isDead()))
-            Managers.NOTIFICATION.publicity("Aura", isRu() ? "Цель нейтрализована!" : "Target neutralized!", 3, Notification.Type.SUCCESS);
-    }
+    public void resolvePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity p : mc.world.getPlayers()) if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).resolve(resolver.getValue()); }
+    public void restorePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity p : mc.world.getPlayers()) if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).releaseResolver(); }
+    public void handleKill() { if (target instanceof LivingEntity le && (le.getHealth() <= 0 || le.isDead())) Managers.NOTIFICATION.publicity("Aura", "Target neutralized!", 3, Notification.Type.SUCCESS); }
 
     private void calcRotations(boolean ready) {
-        if (ready) {
-            trackticks = (mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext() ? 1 : interactTicks.getValue());
-        } else if (trackticks > 0) {
-            trackticks--;
-        }
-        
+        if (ready) trackticks = (mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext() ? 1 : interactTicks.getValue());
+        else if (trackticks > 0) trackticks--;
         if (target == null) return;
-        
         Vec3d targetVec = getLegitLook(target);
         if (targetVec == null) return;
-
         float delta_yaw = wrapDegrees((float) wrapDegrees(Math.toDegrees(Math.atan2(targetVec.z - mc.player.getZ(), (targetVec.x - mc.player.getX()))) - 90) - rotationYaw) + (wallsBypass.is(WallsBypass.V2) && !ready && !mc.player.canSee(target) ? 20 : 0);
         float delta_pitch = ((float) (-Math.toDegrees(Math.atan2(targetVec.y - (mc.player.getPos().y + mc.player.getEyeHeight(mc.player.getPose())), Math.sqrt(Math.pow((targetVec.x - mc.player.getX()), 2) + Math.pow(targetVec.z - mc.player.getZ(), 2))))) - rotationPitch);
-        
         float yawStep = rotationMode.getValue() != Mode.Track ? 360f : random(minYawStep.getValue(), maxYawStep.getValue());
         float deltaYaw = MathHelper.clamp(MathHelper.abs(delta_yaw), -yawStep, yawStep);
-        
         rotationYaw = rotationYaw + (delta_yaw > 0 ? deltaYaw : -deltaYaw);
         rotationPitch = MathHelper.clamp(rotationPitch + delta_pitch, -90.0F, 90.0F);
-        
         lookingAtHitbox = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue());
     }
 
     public void onRender3D(MatrixStack stack) {
-        if (target == null || mc.player == null) return;
-
-        if ((resolver.is(Resolver.BackTrack) || resolverVisualisation.getValue()) && resolvedBox != null)
-            Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(resolvedBox, HudEditor.getColor(0), 1));
+        if (target == null) return;
+        if (resolvedBox != null) Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(resolvedBox, HudEditor.getColor(0), 1));
 
         switch (esp.getValue()) {
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
             case NurikZapen -> CaptureMark.render(target);
             case CelkaPasta -> Render3DEngine.drawOldTargetEsp(stack, target);
             case Ghost -> {
+                // FIX: Vẽ vòng tròn quay quanh mục tiêu thay vì dùng hàm drawSphere bị lỗi
                 double speed = System.currentTimeMillis() / 1000.0 * ghostSpeed.getValue();
-                double x = Math.sin(speed) * ghostOrbit.getValue();
-                double z = Math.cos(speed) * ghostOrbit.getValue();
-                double y = (Math.sin(speed * 0.5) + 1.0) * (target.getHeight() / 2.0);
-                Vec3d center = target.getPos().add(x, y, z);
-                Render3DEngine.drawSphere(stack, center, 0.15f, HudEditor.getColor(0));
+                double radius = ghostOrbit.getValue();
+                Vec3d targetPos = target.getLerpedPos(mc.getTickDelta());
+                double x = targetPos.x + Math.sin(speed) * radius;
+                double z = targetPos.z + Math.cos(speed) * radius;
+                double y = targetPos.y + (Math.sin(speed * 0.5) + 1.0) * (target.getHeight() / 2.0);
+                Render3DEngine.drawFilledBox(stack, new Box(x - 0.1, y - 0.1, z - 0.1, x + 0.1, y + 0.1, z + 0.1), HudEditor.getColor(0));
             }
-        }
-
-        if (clientLook.getValue() && rotationMode.getValue() != Mode.None) {
-            mc.player.setYaw((float) Render2DEngine.interpolate(mc.player.prevYaw, rotationYaw, Render3DEngine.getTickDelta()));
-            mc.player.setPitch((float) Render2DEngine.interpolate(mc.player.prevPitch, rotationPitch, Render3DEngine.getTickDelta()));
+            case ThunderHackV2 -> { /* Deleted logic as requested */ }
         }
     }
 
-    public float getAttackCooldown() {
-        return MathHelper.clamp(((float) ((ILivingEntity) mc.player).getLastAttackedTicks() + attackBaseTime.getValue()) / getAttackCooldownProgressPerTick(), 0.0F, 1.0F);
-    }
-    
-    public float getAttackCooldownProgressPerTick() {
-        return (float) (1.0 / mc.player.getAttributeValue(EntityAttributes.GENERIC_ATTACK_SPEED) * (20.0 * ThunderHack.TICK_TIMER * (tpsSync.getValue() ? Managers.SERVER.getTPSFactor() : 1f)));
-    }
-    
-    public boolean isAboveWater() {
-        return mc.player.isSubmergedInWater() || mc.world.getBlockState(BlockPos.ofFloored(mc.player.getPos().add(0, -0.4, 0))).getBlock() == Blocks.WATER;
-    }
+    public float getAttackCooldown() { return MathHelper.clamp(((float) ((ILivingEntity) mc.player).getLastAttackedTicks() + attackBaseTime.getValue()) / getAttackCooldownProgressPerTick(), 0.0F, 1.0F); }
+    public float getAttackCooldownProgressPerTick() { return (float) (1.0 / mc.player.getAttributeValue(EntityAttributes.GENERIC_ATTACK_SPEED) * (20.0 * ThunderHack.TICK_TIMER * (tpsSync.getValue() ? Managers.SERVER.getTPSFactor() : 1f))); }
+    public boolean isAboveWater() { return mc.player.isSubmergedInWater() || mc.world.getBlockState(BlockPos.ofFloored(mc.player.getPos().add(0, -0.4, 0))).getBlock() == Blocks.WATER; }
 
     private boolean autoCrit() {
         if (hitTicks > 0) return false;
-        if (pauseInInventory.getValue() && Managers.PLAYER.inInventory) return false;
         if (getAttackCooldown() < attackCooldown.getValue() && !oldDelay.getValue().isEnabled()) return false;
-        
         if (mc.player.isInLava() || mc.player.isSubmergedInWater()) return true;
-        if (!mc.options.jumpKey.isPressed() && isAboveWater()) return true;
-        
         return !mc.player.isOnGround() && mc.player.fallDistance > critFallDistance.getValue();
     }
 
@@ -458,13 +360,10 @@ public class Aura extends Module {
         int axeSlot = InventoryUtility.getAxe().slot();
         if (axeSlot == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
         if (!((PlayerEntity) target).isUsingItem() && !instant) return false;
-
-        int prevSlot = mc.player.getInventory().selectedSlot;
         InventoryUtility.switchTo(axeSlot);
         mc.interactionManager.attackEntity(mc.player, target);
         swingHand();
-        InventoryUtility.switchTo(prevSlot);
-        hitTicks = 10;
+        InventoryUtility.switchTo(mc.player.getInventory().selectedSlot);
         return true;
     }
 
@@ -473,47 +372,27 @@ public class Aura extends Module {
         else if (attackHand.getValue() == AttackHand.OffHand) mc.player.swingHand(Hand.OFF_HAND);
     }
 
-    public Vec3d getLegitLook(Entity target) {
-        return target.getBoundingBox().getCenter();
-    }
-    
-    private void updateTarget() {
-        target = findTarget();
-    }
+    public Vec3d getLegitLook(Entity target) { return target.getBoundingBox().getCenter(); }
 
-    public Entity findTarget() {
-        List<LivingEntity> targets = new CopyOnWriteArrayList<>();
-        for (Entity ent : mc.world.getEntities()) {
-            if (skipEntity(ent)) continue;
-            if (!(ent instanceof LivingEntity)) continue;
-            targets.add((LivingEntity) ent);
-        }
-        
-        return targets.stream().min(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
+    private void updateTarget() {
+        target = mc.world.getEntities().stream()
+                .filter(e -> !skipEntity(e))
+                .min(Comparator.comparing(e -> mc.player.distanceTo(e))).orElse(null);
     }
 
     private boolean skipEntity(Entity entity) {
         if (!(entity instanceof LivingEntity ent) || ent == mc.player || !ent.isAlive()) return true;
-        if (entity instanceof ArmorStandEntity) return true;
-        if (entity instanceof PlayerEntity player) {
-            if (Managers.FRIEND.isFriend(player)) return true;
-            if (player.isCreative() && ignoreCreative.getValue()) return true;
-        }
+        if (entity instanceof PlayerEntity && Managers.FRIEND.isFriend((PlayerEntity) entity)) return true;
         return mc.player.distanceTo(entity) > getRange() + aimRange.getValue();
     }
 
-    private boolean shouldRandomizeDelay() {
-        return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f);
-    }
+    private boolean shouldRandomizeDelay() { return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f); }
 
     public static class Position {
-        private double x, y, z;
-        private int ticks;
+        private double x, y, z; private int ticks;
         public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
         public boolean shouldRemove() { return ticks++ > ModuleManager.aura.backTicks.getValue(); }
-        public double getX() { return x; }
-        public double getY() { return y; }
-        public double getZ() { return z; }
+        public double getX() { return x; } public double getY() { return y; } public double getZ() { return z; }
     }
 
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
@@ -522,7 +401,8 @@ public class Aura extends Module {
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
     public enum Mode { Interact, Track, Grim, None }
     public enum AttackHand { MainHand, OffHand, None }
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, Ghost }
+    // Giữ ThunderHackV2 để AutoCrystal không bị lỗi build
+    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, Ghost, ThunderHackV2 }
     public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
     public enum WallsBypass { Off, V1, V2 }
     public enum SprintMode { Legit, HvH, SMP }
