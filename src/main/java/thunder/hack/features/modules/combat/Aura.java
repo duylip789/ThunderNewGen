@@ -65,10 +65,23 @@ import static thunder.hack.features.modules.client.ClientSettings.isRu;
 import static thunder.hack.utility.math.MathUtility.random;
 
 public class Aura extends Module {
-    // Class Position phải là PUBLIC để MixinEntityLiving có thể truy cập
+
+    // 1. KHAI BÁO ENUMS TRƯỚC ĐỂ SETTINGS CÓ THỂ SỬ DỤNG
+    public enum SprintMode { HvH, Legit, SMP, None }
+    public enum RayTrace { OFF, OnlyTarget, AllEntities }
+    public enum Sort { LowestDistance, HighestDistance, LowestHealth, HighestHealth, LowestDurability, HighestDurability, FOV }
+    public enum Switch { Normal, None, Silent }
+    public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    public enum Mode { Interact, Track, Grim, None }
+    public enum AttackHand { MainHand, OffHand, None }
+    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2 }
+    public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
+    public enum WallsBypass { Off, V1, V2 }
+
+    // 2. INNER CLASS PUBLIC STATIC ĐỂ MIXIN CÓ THỂ TRUY CẬP
     public static class Position {
-        private final double x, y, z;
-        private int ticks;
+        public double x, y, z;
+        public int ticks;
 
         public Position(double x, double y, double z) {
             this.x = x;
@@ -85,24 +98,21 @@ public class Aura extends Module {
         public double getZ() { return z; }
     }
 
+    // 3. CÁC SETTINGS CỦA MODULE
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
-
-    // Sprint Mode
     public final Setting<SprintMode> sprintMode = new Setting<>("SprintMode", SprintMode.HvH);
 
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
     public final Setting<Float> elytraAttackRange = new Setting<>("ElytraRange", 3.1f, 1f, 6.0f, v -> elytra.getValue());
     public final Setting<Float> elytraWallRange = new Setting<>("ElytraThroughWallsRange", 3.1f, 0f, 6.0f, v -> elytra.getValue());
 
-    // Elytra Target Advanced
     public final Setting<BooleanSettingGroup> elytraTargetGroup = new Setting<>("ElytraTarget", new BooleanSettingGroup(false));
     public final Setting<Bind> elytraTargetBind = new Setting<>("ETarget Bind", new Bind(-1, false, false)).addToGroup(elytraTargetGroup);
     public final Setting<Boolean> autoFirework = new Setting<>("AutoFirework", true).addToGroup(elytraTargetGroup);
     public final Setting<Float> heightGain = new Setting<>("HeightGain", 1.5f, 0f, 4.0f).addToGroup(elytraTargetGroup);
-    private final Timer fireworkTimer = new Timer();
-
-    public final Setting<WallsBypass> wallsBypass = new Setting<>("WallsBypass", WallsBypass.Off, v -> getWallRange() > 0);
+    
+    public final Setting<WallsBypass> wallsBypass = new Setting<>("WallsBypass", WallsBypass.Off, v -> wallRange.getValue() > 0);
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
     public final Setting<Integer> interactTicks = new Setting<>("InteractTicks", 3, 1, 10, v -> rotationMode.getValue() == Mode.Interact);
@@ -120,7 +130,6 @@ public class Aura extends Module {
     public final Setting<Integer> minCPS = new Setting<>("MinCPS", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("MaxCPS", 12, 1, 20).addToGroup(oldDelay);
 
-    // ESP
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack);
     public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2));
     public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
@@ -131,7 +140,6 @@ public class Aura extends Module {
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     
-    /* ADVANCED */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -161,7 +169,6 @@ public class Aura extends Module {
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
-    /* TARGETS */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -178,13 +185,14 @@ public class Aura extends Module {
     public final Setting<Boolean> ignoreNaked = new Setting<>("IgnoreNaked", false).addToGroup(targets);
     public final Setting<Boolean> ignoreShield = new Setting<>("AttackShieldingEntities", true).addToGroup(targets);
 
+    // 4. BIẾN LOGIC
     public static Entity target;
     public float rotationYaw, rotationPitch;
     public float pitchAcceleration = 1f;
     private Vec3d rotationPoint = Vec3d.ZERO, rotationMotion = Vec3d.ZERO;
     private int hitTicks, trackticks;
     private boolean lookingAtHitbox;
-    private final Timer delayTimer = new Timer(), pauseTimer = new Timer();
+    private final Timer delayTimer = new Timer(), pauseTimer = new Timer(), fireworkTimer = new Timer();
     public Box resolvedBox;
     static boolean wasTargeted = false;
 
@@ -192,6 +200,7 @@ public class Aura extends Module {
         super("Aura", Category.COMBAT);
     }
 
+    // 5. LOGIC CHÍNH
     private float getRange() { return elytra.getValue() && mc.player.isFallFlying() ? elytraAttackRange.getValue() : attackRange.getValue(); }
     private float getWallRange() { return elytra.getValue() && mc.player != null && mc.player.isFallFlying() ? elytraWallRange.getValue() : wallRange.getValue(); }
 
@@ -212,16 +221,16 @@ public class Aura extends Module {
 
     private void handleElytraTarget() {
         if (!elytraTargetGroup.getValue().isEnabled() || target == null || !mc.player.isFallFlying()) return;
-        double desiredY = target.getY() + heightGain.getValue();
-        if (mc.player.getY() < desiredY) {
+        double dY = target.getY() + heightGain.getValue();
+        if (mc.player.getY() < dY) {
             mc.player.addVelocity(0, 0.15, 0);
             if (autoFirework.getValue() && fireworkTimer.passedMs(700)) {
-                int fireworkSlot = InventoryUtility.getFirework().slot();
-                if (fireworkSlot != -1) {
-                    int prevSlot = mc.player.getInventory().selectedSlot;
-                    InventoryUtility.switchTo(fireworkSlot);
+                int fw = InventoryUtility.getFirework().slot();
+                if (fw != -1) {
+                    int p = mc.player.getInventory().selectedSlot;
+                    InventoryUtility.switchTo(fw);
                     mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-                    InventoryUtility.switchTo(prevSlot);
+                    InventoryUtility.switchTo(p);
                     fireworkTimer.reset();
                 }
             }
@@ -235,22 +244,28 @@ public class Aura extends Module {
         handleSprintMode();
         handleElytraTarget();
         if (!mc.options.jumpKey.isPressed() && mc.player.isOnGround() && autoJump.getValue()) mc.player.jump();
+        
         boolean ready;
-        if (grimRayTrace.getValue()) { ready = autoCrit() && (lookingAtHitbox || skipRayTraceCheck()); calcRotations(autoCrit()); }
-        else { calcRotations(autoCrit()); ready = autoCrit() && (lookingAtHitbox || skipRayTraceCheck()); }
+        if (grimRayTrace.getValue()) { 
+            ready = autoCrit() && (lookingAtHitbox || skipRayTraceCheck()); 
+            calcRotations(autoCrit()); 
+        } else { 
+            calcRotations(autoCrit()); 
+            ready = autoCrit() && (lookingAtHitbox || skipRayTraceCheck()); 
+        }
+
         if (ready) {
             if (shieldBreaker(false)) return;
-            boolean[] state = preAttack();
+            boolean[] s = preAttack();
             if (!(target instanceof PlayerEntity pl) || !(pl.isUsingItem() && pl.getOffHandStack().getItem() == Items.SHIELD) || ignoreShield.getValue()) attack();
-            postAttack(state[0], state[1]);
+            postAttack(s[0], s[1]);
         }
     }
 
-    // Các hàm phụ trợ và logic gốc được giữ nguyên từ file người dùng cung cấp
     private boolean haveWeapon() {
-        Item handItem = mc.player.getMainHandStack().getItem();
+        Item i = mc.player.getMainHandStack().getItem();
         if (onlyWeapon.getValue()) {
-            if (switchMode.getValue() == Switch.None) return handItem instanceof SwordItem || handItem instanceof AxeItem || handItem instanceof TridentItem;
+            if (switchMode.getValue() == Switch.None) return i instanceof SwordItem || i instanceof AxeItem || i instanceof TridentItem;
             else return (InventoryUtility.getSwordHotBar().found() || InventoryUtility.getAxeHotBar().found());
         }
         return true;
@@ -261,24 +276,28 @@ public class Aura extends Module {
     }
 
     public void attack() {
-        Criticals.cancelCrit = true; ModuleManager.criticals.doCrit();
-        int prev = switchMethod(); mc.interactionManager.attackEntity(mc.player, target);
-        Criticals.cancelCrit = false; swingHand(); hitTicks = getHitTicks();
-        if (prev != -1) InventoryUtility.switchTo(prev);
+        Criticals.cancelCrit = true; 
+        ModuleManager.criticals.doCrit();
+        int p = switchMethod(); 
+        mc.interactionManager.attackEntity(mc.player, target);
+        Criticals.cancelCrit = false; 
+        swingHand(); 
+        hitTicks = getHitTicks();
+        if (p != -1) InventoryUtility.switchTo(p);
     }
 
     private boolean @NotNull [] preAttack() {
-        boolean block = mc.player.isUsingItem() && mc.player.getActiveItem().getItem().getUseAction(mc.player.getActiveItem()) == BLOCK;
-        if (block && unpressShield.getValue()) sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, Direction.DOWN));
-        boolean sprint = Core.serverSprint;
-        if (sprint && dropSprint.getValue()) disableSprint();
+        boolean b = mc.player.isUsingItem() && mc.player.getActiveItem().getItem().getUseAction(mc.player.getActiveItem()) == BLOCK;
+        if (b && unpressShield.getValue()) sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, Direction.DOWN));
+        boolean s = Core.serverSprint;
+        if (s && dropSprint.getValue()) disableSprint();
         if (rotationMode.is(Mode.Grim)) sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), rotationYaw, rotationPitch, mc.player.isOnGround()));
-        return new boolean[]{block, sprint};
+        return new boolean[]{b, s};
     }
 
-    public void postAttack(boolean block, boolean sprint) {
-        if (sprint && returnSprint.getValue() && dropSprint.getValue()) enableSprint();
-        if (block && unpressShield.getValue()) sendSequencedPacket(id -> new PlayerInteractItemC2SPacket(Hand.OFF_HAND, id, rotationYaw, rotationPitch));
+    public void postAttack(boolean b, boolean s) {
+        if (s && returnSprint.getValue() && dropSprint.getValue()) enableSprint();
+        if (b && unpressShield.getValue()) sendSequencedPacket(id -> new PlayerInteractItemC2SPacket(Hand.OFF_HAND, id, rotationYaw, rotationPitch));
         if (rotationMode.is(Mode.Grim)) sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYaw(), mc.player.getPitch(), mc.player.isOnGround()));
     }
 
@@ -289,9 +308,9 @@ public class Aura extends Module {
     public void handleKill() { if (target instanceof LivingEntity && (((LivingEntity) target).getHealth() <= 0 || ((LivingEntity) target).isDead())) Managers.NOTIFICATION.publicity("Aura", isRu() ? "Цель успешно нейтрализована!" : "Target successfully neutralized!", 3, Notification.Type.SUCCESS); }
 
     private int switchMethod() {
-        int prev = -1; SearchInvResult r = InventoryUtility.getSwordHotBar();
-        if (r.found() && switchMode.getValue() != Switch.None) { if (switchMode.getValue() == Switch.Silent) prev = mc.player.getInventory().selectedSlot; r.switchTo(); }
-        return prev;
+        int p = -1; SearchInvResult r = InventoryUtility.getSwordHotBar();
+        if (r.found() && switchMode.getValue() != Switch.None) { if (switchMode.getValue() == Switch.Silent) p = mc.player.getInventory().selectedSlot; r.switchTo(); }
+        return p;
     }
 
     private int getHitTicks() { return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (shouldRandomizeDelay() ? (int) MathUtility.random(11, 13) : attackTickLimit.getValue()); }
@@ -334,15 +353,15 @@ public class Aura extends Module {
     }
 
     private boolean shieldBreaker(boolean instant) {
-        int axe = InventoryUtility.getAxe().slot(); if (axe == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
+        int ax = InventoryUtility.getAxe().slot(); if (ax == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
         PlayerEntity t = (PlayerEntity) target; if (!t.isUsingItem() && !instant) return false;
         if (t.getOffHandStack().getItem() != Items.SHIELD && t.getMainHandStack().getItem() != Items.SHIELD) return false;
-        if (axe >= 9) {
-            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axe, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
+        if (ax >= 9) {
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, ax, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
             sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId)); mc.interactionManager.attackEntity(mc.player, target); swingHand();
-            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axe, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, ax, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
             sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
-        } else { sendPacket(new UpdateSelectedSlotC2SPacket(axe)); mc.interactionManager.attackEntity(mc.player, target); swingHand(); sendPacket(new UpdateSelectedSlotC2SPacket(mc.player.getInventory().selectedSlot)); }
+        } else { sendPacket(new UpdateSelectedSlotC2SPacket(ax)); mc.interactionManager.attackEntity(mc.player, target); swingHand(); sendPacket(new UpdateSelectedSlotC2SPacket(mc.player.getInventory().selectedSlot)); }
         hitTicks = 10; return true;
     }
 
@@ -384,7 +403,10 @@ public class Aura extends Module {
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
         }
-        if (clientLook.getValue() && rotationMode.getValue() != Mode.None) { mc.player.setYaw((float) Render2DEngine.interpolate(mc.player.prevYaw, rotationYaw, Render3DEngine.getTickDelta())); mc.player.setPitch((float) Render2DEngine.interpolate(mc.player.prevPitch, rotationPitch, Render3DEngine.getTickDelta())); }
+        if (clientLook.getValue() && rotationMode.getValue() != Mode.None) { 
+            mc.player.setYaw((float) Render2DEngine.interpolate(mc.player.prevYaw, rotationYaw, Render3DEngine.getTickDelta())); 
+            mc.player.setPitch((float) Render2DEngine.interpolate(mc.player.prevPitch, rotationPitch, Render3DEngine.getTickDelta())); 
+        }
     }
 
     @Override public void onDisable() { target = null; }
@@ -445,14 +467,4 @@ public class Aura extends Module {
     public void pause() { pauseTimer.reset(); }
     private boolean shouldRandomizeDelay() { return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f || mc.player.isSwimming() || mc.player.isFallFlying()); }
     private boolean shouldRandomizeFallDistance() { return randomHitDelay.getValue() && !shouldRandomizeDelay(); }
-
-    public enum RayTrace { OFF, OnlyTarget, AllEntities }
-    public enum Sort { LowestDistance, HighestDistance, LowestHealth, HighestHealth, LowestDurability, HighestDurability, FOV }
-    public enum Switch { Normal, None, Silent }
-    public enum Resolver { Off, Advantage, Predictive, BackTrack }
-    public enum Mode { Interact, Track, Grim, None }
-    public enum AttackHand { MainHand, OffHand, None }
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2 }
-    public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
-    public enum WallsBypass { Off, V1, V2 }
 }
