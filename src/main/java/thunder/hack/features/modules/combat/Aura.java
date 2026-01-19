@@ -51,7 +51,6 @@ import thunder.hack.utility.player.PlayerUtility;
 import thunder.hack.utility.player.SearchInvResult;
 import thunder.hack.utility.render.Render2DEngine;
 import thunder.hack.utility.render.Render3DEngine;
-import thunder.hack.utility.render.animation.CaptureMark;
 
 import java.awt.Color;
 import java.util.*;
@@ -86,8 +85,8 @@ public class Aura extends Module {
     public final Setting<Integer> minCPS = new Setting<>("min cps", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("max cps", 12, 1, 20).addToGroup(oldDelay);
 
-    // newgen esp settings
-    public final Setting<ESP> esp = new Setting<>("esp", ESP.ThunderHack);
+    // NewGen ESP Settings
+    public final Setting<ESP> esp = new Setting<>("esp", ESP.NewGen);
     public final Setting<Color> newGenColor = new Setting<>("newgen color", new Color(255, 255, 255, 200), v -> esp.is(ESP.NewGen));
     public final Setting<Integer> newGenPoints = new Setting<>("newgen points", 15, 1, 50, v -> esp.is(ESP.NewGen));
     public final Setting<Float> newGenSpeed = new Setting<>("newgen speed", 0.15f, 0.01f, 1.0f, v -> esp.is(ESP.NewGen));
@@ -242,7 +241,6 @@ public class Aura extends Module {
             else if (!isTargeted && wasTargeted) { BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("resume"); wasTargeted = false; }
         }
         
-        // Cập nhật tia linh hồn đuổi theo
         if (esp.is(ESP.NewGen) && target != null) {
             if (soulParticles.size() < newGenPoints.getValue()) {
                 soulParticles.add(new SoulParticle(target.getPos().add(0, 1, 0)));
@@ -263,8 +261,6 @@ public class Aura extends Module {
         if (!pauseTimer.passedMs(1000) || (mc.player.isUsingItem() && pauseWhileEating.getValue()) || !haveWeapon()) return;
         if (target != null && rotationMode.getValue() != Mode.None && rotationMode.getValue() != Mode.Grim) { mc.player.setYaw(rotationYaw); mc.player.setPitch(rotationPitch); }
         else { rotationYaw = mc.player.getYaw(); rotationPitch = mc.player.getPitch(); }
-        if (oldDelay.getValue().isEnabled() && minCPS.getValue() > maxCPS.getValue()) minCPS.setValue(maxCPS.getValue());
-        if (target != null && pullDown.getValue() && (mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST) || !onlyJumpBoost.getValue())) mc.player.addVelocity(0f, -pullValue.getValue() / 1000f, 0f);
     }
 
     public void onRender3D(MatrixStack stack) {
@@ -272,26 +268,63 @@ public class Aura extends Module {
         
         if (esp.is(ESP.NewGen)) {
             for (SoulParticle p : soulParticles) {
-                Render3DEngine.drawFilledSphere(stack, p.pos, 0.03f, newGenColor.getValue());
+                // Fixed Render3DEngine calls for your client
+                Render3DEngine.drawSphere(stack, p.pos, 0.03f, newGenColor.getValue());
                 if (p.trail.size() > 1) {
                     for (int i = 0; i < p.trail.size() - 1; i++) {
-                        Render3DEngine.drawLine(p.trail.get(i), p.trail.get(i + 1), newGenColor.getValue(), 1.5f);
+                        Render3DEngine.drawLine(p.trail.get(i), p.trail.get(i + 1), newGenColor.getValue());
                     }
                 }
             }
         } else if (esp.is(ESP.ThunderHack)) {
              Render3DEngine.drawTargetEsp(stack, target);
         } else if (esp.is(ESP.ThunderHackV2)) {
-             Render3DEngine.renderGhosts(0.5f, 1f, true, 0.1f, target);
-        }
-        
-        if (clientLook.getValue() && rotationMode.getValue() != Mode.None) {
-            mc.player.setYaw((float) Render2DEngine.interpolate(mc.player.prevYaw, rotationYaw, Render3DEngine.getTickDelta()));
-            mc.player.setPitch((float) Render2DEngine.interpolate(mc.player.prevPitch, rotationPitch, Render3DEngine.getTickDelta()));
+             Render3DEngine.renderGhosts((int)0.5f, 1f, true, 0.1f, target);
         }
     }
 
-    // Các hàm phụ trợ giữ nguyên từ gốc để không lỗi
+    // --- CÁC HÀM PHỤ TRỢ FIX LỖI "CANNOT FIND SYMBOL" ---
+
+    public void pause() {
+        pauseTimer.reset();
+    }
+
+    public boolean isAboveWater() {
+        return mc.player.isSubmergedInWater() || mc.world.getBlockState(BlockPos.ofFloored(mc.player.getPos().add(0, -0.4, 0))).getBlock() == Blocks.WATER;
+    }
+
+    public void swingHand() {
+        switch (attackHand.getValue()) {
+            case OffHand -> mc.player.swingHand(Hand.OFF_HAND);
+            case MainHand -> mc.player.swingHand(Hand.MAIN_HAND);
+        }
+    }
+
+    public boolean shieldBreaker(boolean instant) {
+        int axeSlot = InventoryUtility.getAxe().slot();
+        if (axeSlot == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
+        PlayerEntity pTarget = (PlayerEntity) target;
+        if (!pTarget.isUsingItem() && !instant) return false;
+        if (pTarget.getOffHandStack().getItem() != Items.SHIELD && pTarget.getMainHandStack().getItem() != Items.SHIELD) return false;
+        
+        if (axeSlot >= 9) {
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
+            sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
+            mc.interactionManager.attackEntity(mc.player, target);
+            swingHand();
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
+            sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
+        } else {
+            sendPacket(new UpdateSelectedSlotC2SPacket(axeSlot));
+            mc.interactionManager.attackEntity(mc.player, target);
+            swingHand();
+            sendPacket(new UpdateSelectedSlotC2SPacket(mc.player.getInventory().selectedSlot));
+        }
+        hitTicks = 10;
+        return true;
+    }
+
+    // Các logic hệ thống giữ nguyên để ổn định
     public void resolvePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity player : mc.world.getPlayers()) if (player instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) player).resolve(resolver.getValue()); }
     public void restorePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity player : mc.world.getPlayers()) if (player instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) player).releaseResolver(); }
     public void handleKill() { if (target instanceof LivingEntity && (((LivingEntity) target).getHealth() <= 0 || ((LivingEntity) target).isDead())) Managers.NOTIFICATION.publicity("Aura", isRu() ? "Цель успешно нейтрализована!" : "Target successfully neutralized!", 3, Notification.Type.SUCCESS); }
@@ -326,7 +359,6 @@ public class Aura extends Module {
     @Override public void onEnable() { soulParticles.clear(); }
     @Override public void onDisable() { target = null; soulParticles.clear(); }
 
-    // --- CLASS QUAN TRỌNG ĐỂ MIXIN KHÔNG LỖI ---
     public static class Position {
         private double x, y, z;
         private int ticks;
@@ -337,7 +369,6 @@ public class Aura extends Module {
         public double getZ() { return z; }
     }
 
-    // Logic tia linh hồn
     private static class SoulParticle {
         public Vec3d pos;
         public List<Vec3d> trail = new ArrayList<>();
