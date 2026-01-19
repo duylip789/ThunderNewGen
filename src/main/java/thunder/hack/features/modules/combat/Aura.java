@@ -54,11 +54,7 @@ import thunder.hack.utility.render.Render3DEngine;
 import thunder.hack.utility.render.animation.CaptureMark;
 
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static net.minecraft.util.UseAction.BLOCK;
@@ -90,15 +86,7 @@ public class Aura extends Module {
     public final Setting<Integer> minCPS = new Setting<>("MinCPS", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("MaxCPS", 12, 1, 20).addToGroup(oldDelay);
 
-    // --- SPRINT MODE (YÊU CẦU MỚI) ---
-    public final Setting<SprintMode> sprintMode = new Setting<>("SprintMode", SprintMode.HvH);
-
-    // --- ESP SETTINGS (GIỮ NGUYÊN VÀ THÊM NEWGEN) ---
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack);
-    public final Setting<Color> newGenColor = new Setting<>("NewGenColor", new Color(255, 255, 255, 200), v -> esp.is(ESP.NewGen));
-    public final Setting<Integer> newGenPoints = new Setting<>("NewGenPoints", 15, 1, 50, v -> esp.is(ESP.NewGen));
-    public final Setting<Float> newGenSpeed = new Setting<>("NewGenSpeed", 0.15f, 0.01f, 1.0f, v -> esp.is(ESP.NewGen));
-
     public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2));
     public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
     public final Setting<Integer> espFactor = new Setting<>("ESPFactor", 8, 1, 20, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
@@ -139,9 +127,6 @@ public class Aura extends Module {
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
-    // --- HVH TIMER ---
-    public final Setting<Integer> hvhTimer = new Setting<>("HvHTimer", 10, 1, 20, v -> sprintMode.is(SprintMode.HvH)).addToGroup(advanced);
-
 
     /* TARGETS   */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
@@ -179,8 +164,21 @@ public class Aura extends Module {
     public Box resolvedBox;
     static boolean wasTargeted = false;
 
-    // --- NEWGEN PARTICLES ---
-    private final List<SoulParticle> soulParticles = new ArrayList<>();
+    // --- NEWGEN ESP DATA ---
+    private final List<TrailParticle> trailParticles = new ArrayList<>();
+
+    private static class TrailParticle {
+        public double theta; 
+        public double yOffset; 
+        public List<Vec3d> history = new ArrayList<>(); 
+        public double speed;
+
+        public TrailParticle(double theta, double yOffset, double speed) {
+            this.theta = theta;
+            this.yOffset = yOffset;
+            this.speed = speed;
+        }
+    }
 
     public Aura() {
         super("Aura", Category.COMBAT);
@@ -206,9 +204,6 @@ public class Aura extends Module {
             return;
         }
 
-        // --- SPRINT LOGIC (HVH & SMP) ---
-        handleSprintMode();
-
         if (!mc.options.jumpKey.isPressed() && mc.player.isOnGround() && autoJump.getValue())
             mc.player.jump();
 
@@ -231,25 +226,6 @@ public class Aura extends Module {
                 attack();
 
             postAttack(playerState[0], playerState[1]);
-        }
-    }
-
-    private void handleSprintMode() {
-        if (target == null) return;
-        switch (sprintMode.getValue()) {
-            case HvH -> {
-                if (mc.player.forwardSpeed != 0 || mc.player.sidewaysSpeed != 0) mc.player.setSprinting(true);
-            }
-            case SMP -> {
-                if (mc.player.fallDistance > 0.1f && !mc.player.isOnGround()) {
-                    mc.player.setSprinting(false);
-                } else {
-                    mc.player.setSprinting(true);
-                }
-            }
-            case Legit -> {
-                if (mc.player.forwardSpeed <= 0) mc.player.setSprinting(false);
-            }
         }
     }
 
@@ -354,7 +330,6 @@ public class Aura extends Module {
     }
 
     private int getHitTicks() {
-        if (sprintMode.is(SprintMode.HvH)) return hvhTimer.getValue();
         return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (shouldRandomizeDelay() ? (int) MathUtility.random(11, 13) : attackTickLimit.getValue());
     }
 
@@ -380,16 +355,6 @@ public class Aura extends Module {
         auraLogic();
         restorePlayers();
         hitTicks--;
-
-        // Update NewGen Particles
-        if (esp.is(ESP.NewGen) && target != null) {
-            if (soulParticles.size() < newGenPoints.getValue()) {
-                soulParticles.add(new SoulParticle(target.getPos().add(0, 1, 0)));
-            }
-            soulParticles.forEach(p -> p.tick(target, newGenSpeed.getValue()));
-        } else {
-            soulParticles.clear();
-        }
     }
 
     @EventHandler
@@ -447,7 +412,7 @@ public class Aura extends Module {
         rotationYaw = mc.player.getYaw();
         rotationPitch = mc.player.getPitch();
         delayTimer.reset();
-        soulParticles.clear();
+        trailParticles.clear();
     }
 
     private boolean autoCrit() {
@@ -491,7 +456,7 @@ public class Aura extends Module {
         return true;
     }
 
-    private boolean shieldBreaker(boolean instant) {
+    private boolean shieldBreaker(boolean instant) { 
         int axeSlot = InventoryUtility.getAxe().slot();
         if (axeSlot == -1) return false;
         if (!shieldBreaker.getValue()) return false;
@@ -556,13 +521,13 @@ public class Aura extends Module {
         } else if (trackticks > 0) {
             trackticks--;
         }
-
-        if (target == null) return;
+        if (target == null)
+            return;
         Vec3d targetVec;
         if (mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) targetVec = target.getEyePos();
         else targetVec = getLegitLook(target);
-
-        if (targetVec == null) return;
+        if (targetVec == null)
+            return;
 
         pitchAcceleration = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange() + aimRange.getValue(), getRange() + aimRange.getValue(), rayTrace.getValue())
                 ? aimedPitchStep.getValue() : pitchAcceleration < maxPitchStep.getValue() ? pitchAcceleration * pitchAccelerate.getValue() : maxPitchStep.getValue();
@@ -577,13 +542,16 @@ public class Aura extends Module {
             switch (accelerateOnHit.getValue()) {
                 case Yaw -> yawStep = 180f;
                 case Pitch -> pitchStep = 90f;
-                case Both -> { yawStep = 180f; pitchStep = 90f; }
+                case Both -> {
+                    yawStep = 180f;
+                    pitchStep = 90f;
+                }
             }
 
-        if (delta_yaw > 180) delta_yaw = delta_yaw - 180;
+        if (delta_yaw > 180)
+            delta_yaw = delta_yaw - 180;
         float deltaYaw = MathHelper.clamp(MathHelper.abs(delta_yaw), -yawStep, yawStep);
         float deltaPitch = MathHelper.clamp(delta_pitch, -pitchStep, pitchStep);
-
         float newYaw = rotationYaw + (delta_yaw > 0 ? deltaYaw : -deltaYaw);
         float newPitch = MathHelper.clamp(rotationPitch + deltaPitch, -90.0F, 90.0F);
 
@@ -597,12 +565,16 @@ public class Aura extends Module {
             rotationPitch = mc.player.getPitch();
         }
 
-        if (!rotationMode.is(Mode.Grim)) ModuleManager.rotations.fixRotation = rotationYaw;
+        if (!rotationMode.is(Mode.Grim))
+            ModuleManager.rotations.fixRotation = rotationYaw;
         lookingAtHitbox = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue());
     }
 
     public void onRender3D(MatrixStack stack) {
-        if (!haveWeapon() || target == null) return;
+        if (!haveWeapon() || target == null) {
+            trailParticles.clear();
+            return;
+        }
 
         if ((resolver.is(Resolver.BackTrack) || resolverVisualisation.getValue()) && resolvedBox != null)
             Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(resolvedBox, HudEditor.getColor(0), 1));
@@ -612,13 +584,37 @@ public class Aura extends Module {
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+            
+            // --- NEWGEN ESP (HUD EDITOR COLOR) ---
             case NewGen -> {
-                for (SoulParticle p : soulParticles) {
-                    Render3DEngine.drawLine(p.pos.add(0,0.02,0), p.pos.subtract(0,0.02,0), newGenColor.getValue());
-                    if (p.trail.size() > 1) {
-                        for (int i = 0; i < p.trail.size() - 1; i++) {
-                            Render3DEngine.drawLine(p.trail.get(i), p.trail.get(i + 1), newGenColor.getValue());
-                        }
+                int particleCount = 3; 
+                if (trailParticles.isEmpty()) {
+                    for (int i = 0; i < particleCount; i++) {
+                        trailParticles.add(new TrailParticle(i * (Math.PI * 2 / particleCount), 0, 0.05 + (i * 0.01)));
+                    }
+                }
+
+                double time = System.currentTimeMillis() / 1000.0;
+                
+                for (TrailParticle p : trailParticles) {
+                    p.theta += p.speed;
+                    p.yOffset = Math.sin(time + p.theta) * 0.75 + 1.0; 
+                    
+                    double x = Math.cos(p.theta) * 0.7;
+                    double z = Math.sin(p.theta) * 0.7;
+                    
+                    Vec3d currentPos = target.getPos().add(x, p.yOffset, z);
+                    p.history.add(currentPos);
+                    
+                    if (p.history.size() > 15) p.history.remove(0); 
+                    
+                    for (int i = 1; i < p.history.size(); i++) {
+                        Vec3d pos1 = p.history.get(i - 1);
+                        Vec3d pos2 = p.history.get(i);
+                        
+                        // Lấy màu đồng bộ từ HudEditor
+                        Color hudColor = HudEditor.getColor(i * 10); 
+                        Render3DEngine.drawLine(pos1, pos2, hudColor, 2.5f); 
                     }
                 }
             }
@@ -640,13 +636,17 @@ public class Aura extends Module {
         dst += aimRange.getValue();
         if ((mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) && target != null) dst += 4f;
         if (ModuleManager.strafe.isEnabled()) dst += 4f;
-        if (rotationMode.getValue() != Mode.Track || rayTrace.getValue() == RayTrace.OFF) dst = getRange();
+        if (rotationMode.getValue() != Mode.Track || rayTrace.getValue() == RayTrace.OFF)
+            dst = getRange();
+
         return dst * dst;
     }
 
     public Vec3d getLegitLook(Entity target) {
-        float minMotionXZ = 0.003f; float maxMotionXZ = 0.03f;
-        float minMotionY = 0.001f; float maxMotionY = 0.03f;
+        float minMotionXZ = 0.003f;
+        float maxMotionXZ = 0.03f;
+        float minMotionY = 0.001f;
+        float maxMotionY = 0.03f;
         double lenghtX = target.getBoundingBox().getLengthX();
         double lenghtY = target.getBoundingBox().getLengthY();
         double lenghtZ = target.getBoundingBox().getLengthZ();
@@ -655,12 +655,20 @@ public class Aura extends Module {
             rotationMotion = new Vec3d(random(-0.05f, 0.05f), random(-0.05f, 0.05f), random(-0.05f, 0.05f));
 
         rotationPoint = rotationPoint.add(rotationMotion);
-        if (rotationPoint.x >= (lenghtX - 0.05) / 2f) rotationMotion = new Vec3d(-random(minMotionXZ, maxMotionXZ), rotationMotion.getY(), rotationMotion.getZ());
-        if (rotationPoint.y >= lenghtY) rotationMotion = new Vec3d(rotationMotion.getX(), -random(minMotionY, maxMotionY), rotationMotion.getZ());
-        if (rotationPoint.z >= (lenghtZ - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), -random(minMotionXZ, maxMotionXZ));
-        if (rotationPoint.x <= -(lenghtX - 0.05) / 2f) rotationMotion = new Vec3d(random(minMotionXZ, 0.03f), rotationMotion.getY(), rotationMotion.getZ());
-        if (rotationPoint.y <= 0.05) rotationMotion = new Vec3d(rotationMotion.getX(), random(minMotionY, maxMotionY), rotationMotion.getZ());
-        if (rotationPoint.z <= -(lenghtZ - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), random(minMotionXZ, maxMotionXZ));
+
+        if (rotationPoint.x >= (lenghtX - 0.05) / 2f)
+            rotationMotion = new Vec3d(-random(minMotionXZ, maxMotionXZ), rotationMotion.getY(), rotationMotion.getZ());
+        if (rotationPoint.y >= lenghtY)
+            rotationMotion = new Vec3d(rotationMotion.getX(), -random(minMotionY, maxMotionY), rotationMotion.getZ());
+        if (rotationPoint.z >= (lenghtZ - 0.05) / 2f)
+            rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), -random(minMotionXZ, maxMotionXZ));
+        if (rotationPoint.x <= -(lenghtX - 0.05) / 2f)
+            rotationMotion = new Vec3d(random(minMotionXZ, 0.03f), rotationMotion.getY(), rotationMotion.getZ());
+        if (rotationPoint.y <= 0.05)
+            rotationMotion = new Vec3d(rotationMotion.getX(), random(minMotionY, maxMotionY), rotationMotion.getZ());
+        if (rotationPoint.z <= -(lenghtZ - 0.05) / 2f)
+            rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), random(minMotionXZ, maxMotionXZ));
+
         rotationPoint.add(random(-0.03f, 0.03f), 0f, random(-0.03f, 0.03f));
 
         if (!mc.player.canSee(target)) {
@@ -669,6 +677,7 @@ public class Aura extends Module {
             }
         }
 
+        float[] rotation;
         if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
             float[] rotation1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
             if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0)) <= attackRange.getPow2Value()
@@ -681,8 +690,8 @@ public class Aura extends Module {
                         for (float y1 = 0.05f; y1 <= target.getBoundingBox().getLengthY(); y1 += 0.15f) {
                             Vec3d v1 = new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1);
                             if (PlayerUtility.squaredDistanceFromEyes(v1) > attackRange.getPow2Value()) continue;
-                            float[] r = Managers.PLAYER.calcAngle(v1);
-                            if (Managers.PLAYER.checkRtx(r[0], r[1], getRange(), 0, rayTrace.getValue())) {
+                            rotation = Managers.PLAYER.calcAngle(v1);
+                            if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], getRange(), 0, rayTrace.getValue())) {
                                 rotationPoint = new Vec3d(x1, y1, z1);
                                 break;
                             }
@@ -695,14 +704,20 @@ public class Aura extends Module {
     }
 
     public boolean isInRange(Entity target) {
-        if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) return false;
+        if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) {
+            return false;
+        }
+        float[] rotation;
         float halfBox = (float) (target.getBoundingBox().getLengthX() / 2f);
         for (float x1 = -halfBox; x1 <= halfBox; x1 += 0.15f) {
             for (float z1 = -halfBox; z1 <= halfBox; z1 += 0.15f) {
                 for (float y1 = 0.05f; y1 <= target.getBoundingBox().getLengthY(); y1 += 0.25f) {
-                    if (PlayerUtility.squaredDistanceFromEyes(new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1)) > getSquaredRotateDistance()) continue;
-                    float[] r = Managers.PLAYER.calcAngle(new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1));
-                    if (Managers.PLAYER.checkRtx(r[0], r[1], (float) Math.sqrt(getSquaredRotateDistance()), getWallRange(), rayTrace.getValue())) return true;
+                    if (PlayerUtility.squaredDistanceFromEyes(new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1)) > getSquaredRotateDistance())
+                        continue;
+                    rotation = Managers.PLAYER.calcAngle(new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1));
+                    if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], (float) Math.sqrt(getSquaredRotateDistance()), getWallRange(), rayTrace.getValue())) {
+                        return true;
+                    }
                 }
             }
         }
@@ -712,27 +727,33 @@ public class Aura extends Module {
     public Entity findTarget() {
         List<LivingEntity> first_stage = new CopyOnWriteArrayList<>();
         for (Entity ent : mc.world.getEntities()) {
-            if ((ent instanceof ShulkerBulletEntity || ent instanceof FireballEntity) && ent.isAlive() && isInRange(ent) && Projectiles.getValue()) return ent;
+            if ((ent instanceof ShulkerBulletEntity || ent instanceof FireballEntity) && ent.isAlive() && isInRange(ent) && Projectiles.getValue()) {
+                return ent;
+            }
             if (skipEntity(ent)) continue;
             if (!(ent instanceof LivingEntity)) continue;
             first_stage.add((LivingEntity) ent);
         }
+
         return switch (sort.getValue()) {
             case LowestDistance -> first_stage.stream().min(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
             case HighestDistance -> first_stage.stream().max(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
             case FOV -> first_stage.stream().min(Comparator.comparing(this::getFOVAngle)).orElse(null);
             case LowestHealth -> first_stage.stream().min(Comparator.comparing(e -> (e.getHealth() + e.getAbsorptionAmount()))).orElse(null);
             case HighestHealth -> first_stage.stream().max(Comparator.comparing(e -> (e.getHealth() + e.getAbsorptionAmount()))).orElse(null);
-            case LowestDurability -> first_stage.stream().min(Comparator.comparing(this::getDurability)).orElse(null);
-            case HighestDurability -> first_stage.stream().max(Comparator.comparing(this::getDurability)).orElse(null);
+            case LowestDurability -> first_stage.stream().min(Comparator.comparing(e -> {
+                        float v = 0;
+                        for (ItemStack armor : e.getArmorItems())
+                            if (armor != null && !armor.getItem().equals(Items.AIR)) v += ((armor.getMaxDamage() - armor.getDamage()) / (float) armor.getMaxDamage());
+                        return v;
+                    })).orElse(null);
+            case HighestDurability -> first_stage.stream().max(Comparator.comparing(e -> {
+                        float v = 0;
+                        for (ItemStack armor : e.getArmorItems())
+                            if (armor != null && !armor.getItem().equals(Items.AIR)) v += ((armor.getMaxDamage() - armor.getDamage()) / (float) armor.getMaxDamage());
+                        return v;
+                    })).orElse(null);
         };
-    }
-
-    private float getDurability(LivingEntity e) {
-        float v = 0;
-        for (ItemStack armor : e.getArmorItems())
-            if (armor != null && !armor.getItem().equals(Items.AIR)) v += ((armor.getMaxDamage() - armor.getDamage()) / (float) armor.getMaxDamage());
-        return v;
     }
 
     private boolean skipEntity(Entity entity) {
@@ -743,6 +764,7 @@ public class Aura extends Module {
         if (entity instanceof CatEntity) return true;
         if (skipNotSelected(entity)) return true;
         if (!InteractionUtility.isVecInFOV(ent.getPos(), fov.getValue())) return true;
+
         if (entity instanceof PlayerEntity player) {
             if (ModuleManager.antiBot.isEnabled() && AntiBot.bots.contains(entity)) return true;
             if (player == mc.player || Managers.FRIEND.isFriend(player)) return true;
@@ -751,6 +773,7 @@ public class Aura extends Module {
             if (player.isInvisible() && ignoreInvisible.getValue()) return true;
             if (player.getTeamColorValue() == mc.player.getTeamColorValue() && ignoreTeam.getValue() && mc.player.getTeamColorValue() != 16777215) return true;
         }
+
         return !isInRange(entity) || (entity.hasCustomName() && ignoreNamed.getValue());
     }
 
@@ -777,30 +800,26 @@ public class Aura extends Module {
         return Math.abs(yaw - MathHelper.wrapDegrees(mc.player.getYaw()));
     }
 
-    public void pause() { pauseTimer.reset(); }
-    private boolean shouldRandomizeDelay() { return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f || mc.player.isSwimming() || mc.player.isFallFlying()); }
-    private boolean shouldRandomizeFallDistance() { return randomHitDelay.getValue() && !shouldRandomizeDelay(); }
-
-    public static class Position {
-        private double x, y, z; private int ticks;
-        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
-        public boolean shouldRemove() { return ticks++ > ModuleManager.aura.backTicks.getValue(); }
-        public double getX() { return x; } public double getY() { return y; } public double getZ() { return z; }
+    public void pause() {
+        pauseTimer.reset();
     }
 
-    // --- NEWGEN SOUL PARTICLE LOGIC ---
-    private static class SoulParticle {
-        public Vec3d pos;
-        public List<Vec3d> trail = new ArrayList<>();
-        private final Random rand = new Random();
-        public SoulParticle(Vec3d start) { this.pos = start; }
-        public void tick(Entity target, float speed) {
-            trail.add(pos);
-            if (trail.size() > 10) trail.remove(0);
-            Vec3d targetVec = target.getPos().add(0, target.getHeight() / 2f, 0);
-            Vec3d moveDir = targetVec.subtract(pos).normalize().multiply(speed);
-            pos = pos.add(moveDir).add((rand.nextFloat() - 0.5) * 0.1, (rand.nextFloat() - 0.5) * 0.1, (rand.nextFloat() - 0.5) * 0.1);
-        }
+    private boolean shouldRandomizeDelay() {
+        return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f || mc.player.isSwimming() || mc.player.isFallFlying());
+    }
+
+    private boolean shouldRandomizeFallDistance() {
+        return randomHitDelay.getValue() && !shouldRandomizeDelay();
+    }
+
+    public static class Position {
+        private double x, y, z;
+        private int ticks;
+        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
+        public boolean shouldRemove() { return ticks++ > ModuleManager.aura.backTicks.getValue(); }
+        public double getX() { return x; }
+        public double getY() { return y; }
+        public double getZ() { return z; }
     }
 
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
@@ -812,5 +831,4 @@ public class Aura extends Module {
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, NewGen }
     public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
     public enum WallsBypass { Off, V1, V2 }
-    public enum SprintMode { Legit, None, SMP, HvH }
 }
