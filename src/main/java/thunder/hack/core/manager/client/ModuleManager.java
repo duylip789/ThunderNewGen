@@ -69,6 +69,8 @@ public class ModuleManager implements IManager {
     public static AntiLegitMiss antiLegitMiss = new AntiLegitMiss();
     public static AntiBallPlace antiBallPlace = new AntiBallPlace();
     public static TridentBoost tridentBoost = new TridentBoost();
+    public static FixHP fixHP = new FixHP();
+    public static FakeLag fakeLag = new FakeLag();
     public static Trajectories trajectories = new Trajectories();
     public static TargetStrafe targetStrafe = new TargetStrafe();
     public static RadarRewrite radarRewrite = new RadarRewrite();
