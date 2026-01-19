@@ -16,8 +16,7 @@ public class KeyPearl extends Module {
     public final Setting<Mode> mode = new Setting<>("Mode", Mode.Back);
 
     public enum Mode {
-        Back, // Ném xong quay về item cũ
-        None  // Ném xong giữ nguyên ngọc trên tay
+        Back, None
     }
 
     @Override
@@ -27,28 +26,24 @@ public class KeyPearl extends Module {
             return;
         }
 
-        // Tìm vị trí của Ender Pearl trong Hotbar
-        int pearlSlot = InventoryUtility.getItemSlot(Items.ENDER_PEARL);
+        // Sửa lỗi 1: Sử dụng findItemInHotbar thay vì getItemSlot
+        int pearlSlot = InventoryUtility.findItemInHotbar(Items.ENDER_PEARL);
 
         if (pearlSlot != -1) {
             int oldSlot = mc.player.getInventory().selectedSlot;
 
-            // Chuyển sang slot có Ngọc
-            InventoryUtility.switchTo(pearlSlot);
+            // Chuyển sang slot Pearl
+            mc.player.getInventory().selectedSlot = pearlSlot;
 
-            // Gửi packet ném ngọc ngay lập tức
-            mc.player.networkHandler.sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0));
+            // Sửa lỗi 2: Sử dụng đúng constructor cho bản Minecraft mới
+            // Chúng ta dùng mc.player.getWorld().getRegistryManager()... hoặc đơn giản hơn là tương tác qua interactionManager
+            mc.player.networkHandler.sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0, 0f, 0f));
 
-            // Nếu mode là Back, chuyển về slot cũ
             if (mode.getValue() == Mode.Back) {
-                InventoryUtility.switchTo(oldSlot);
+                mc.player.getInventory().selectedSlot = oldSlot;
             }
-        } else {
-            // Thông báo nếu không có ngọc (tùy chọn)
-            // Command.sendMessage("No Ender Pearls found in hotbar!");
         }
-
-        // Tự động tắt module sau khi thực thi xong (vì đây là dạng instant action)
+        
         this.disable();
     }
 }
