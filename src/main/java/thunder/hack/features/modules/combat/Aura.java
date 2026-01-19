@@ -111,6 +111,7 @@ public class Aura extends Module {
 
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
+    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
     public final Setting<Resolver> resolver = new Setting<>("Resolver", Resolver.Advantage);
     public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20);
 
@@ -137,7 +138,7 @@ public class Aura extends Module {
     public final Setting<AccelerateOnHit> accelerateOnHit = new Setting<>("AccelerateOnHit", AccelerateOnHit.Off).addToGroup(advanced);
     public final Setting<Integer> minYawStep = new Setting<>("MinYawStep", 65, 1, 180).addToGroup(advanced);
     public final Setting<Integer> maxYawStep = new Setting<>("MaxYawStep", 75, 1, 180).addToGroup(advanced);
-    public final Setting<Float> maxPitchStep = new Setting<>("MaxPitchStep", 90f, 1, 180).addToGroup(advanced);
+    public final Setting<Float> maxPitchStep = new Setting<>("MaxPitchStep", 90f, 1f, 180f).addToGroup(advanced);
 
     // --- LOGIC ---
     public static Entity target;
@@ -146,6 +147,7 @@ public class Aura extends Module {
     private boolean lookingAtHitbox;
     private final Timer pauseTimer = new Timer();
     private final List<GhostData> ghostList = new ArrayList<>();
+    public Box resolvedBox;
     static boolean wasTargeted = false;
 
     public Aura() { super("Aura", Category.COMBAT); }
@@ -161,6 +163,7 @@ public class Aura extends Module {
     }
 
     public float getAttackCooldown() {
+        if (mc.player == null) return 0f;
         return MathHelper.clamp(((float) ((ILivingEntity) mc.player).getLastAttackedTicks() + attackBaseTime.getValue()) / getAttackCooldownProgressPerTick(), 0.0F, 1.0F);
     }
 
@@ -316,6 +319,7 @@ public class Aura extends Module {
         public double x, y, z; public int ticks;
         public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; this.ticks = 0; }
         public double getX() { return x; } public double getY() { return y; } public double getZ() { return z; }
+        public boolean shouldRemove(Position p) { return p.ticks++ > ModuleManager.aura.backTicks.getValue(); }
     }
 
     private static class GhostData {
