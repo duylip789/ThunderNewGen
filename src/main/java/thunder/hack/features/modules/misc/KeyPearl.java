@@ -5,7 +5,6 @@ import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.util.Hand;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
-import thunder.hack.utility.player.InventoryUtility;
 
 public class KeyPearl extends Module {
 
@@ -26,8 +25,14 @@ public class KeyPearl extends Module {
             return;
         }
 
-        // Sửa lỗi 1: Sử dụng findItemInHotbar thay vì getItemSlot
-        int pearlSlot = InventoryUtility.findItemInHotbar(Items.ENDER_PEARL);
+        // Tự tìm slot Pearl trong 9 slot Hotbar
+        int pearlSlot = -1;
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).getItem() == Items.ENDER_PEARL) {
+                pearlSlot = i;
+                break;
+            }
+        }
 
         if (pearlSlot != -1) {
             int oldSlot = mc.player.getInventory().selectedSlot;
@@ -35,15 +40,16 @@ public class KeyPearl extends Module {
             // Chuyển sang slot Pearl
             mc.player.getInventory().selectedSlot = pearlSlot;
 
-            // Sửa lỗi 2: Sử dụng đúng constructor cho bản Minecraft mới
-            // Chúng ta dùng mc.player.getWorld().getRegistryManager()... hoặc đơn giản hơn là tương tác qua interactionManager
+            // Gửi packet ném Pearl (tương thích 1.19.4 - 1.20.x)
             mc.player.networkHandler.sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0, 0f, 0f));
 
+            // Nếu mode là Back thì quay về slot cũ
             if (mode.getValue() == Mode.Back) {
                 mc.player.getInventory().selectedSlot = oldSlot;
             }
         }
         
+        // Tắt module ngay sau khi ném
         this.disable();
     }
 }
