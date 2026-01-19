@@ -111,8 +111,8 @@ public class ModuleManager implements IManager {
     public static TPSCounter tpsCounter = new TPSCounter();
     public static StorageEsp storageEsp = new StorageEsp();
     public static StaffBoard staffBoard = new StaffBoard();
-    public static PistonPush pistonPush = new PistonPush();
-    public static PistonAura pistonAura = new PistonAura();
+    // public static PistonPush pistonPush = new PistonPush();
+  //  public static PistonAura pistonAura = new PistonAura();
     public static NoInteract noInteract = new NoInteract();
     public static ModuleList moduleList = new ModuleList();
     public static KillEffect killEffect = new KillEffect();
