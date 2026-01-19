@@ -53,6 +53,7 @@ import thunder.hack.utility.render.Render2DEngine;
 import thunder.hack.utility.render.Render3DEngine;
 import thunder.hack.utility.render.animation.CaptureMark;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -87,6 +88,7 @@ public class Aura extends Module {
     public final Setting<Integer> minCPS = new Setting<>("MinCPS", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("MaxCPS", 12, 1, 20).addToGroup(oldDelay);
 
+    // --- CẤU HÌNH ESP (ĐÃ THÊM GHOST V2) ---
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack);
     public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2));
     public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
@@ -103,6 +105,7 @@ public class Aura extends Module {
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
 
+    /* ADVANCED   */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -132,6 +135,8 @@ public class Aura extends Module {
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
+
+    /* TARGETS   */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -169,6 +174,35 @@ public class Aura extends Module {
 
     public Aura() {
         super("Aura", Category.COMBAT);
+    }
+
+    // --- ĐÂY LÀ CLASS POSITION MÀ BẠN BỊ THIẾU ---
+    // Class này bắt buộc phải có để MixinEntityLiving không bị lỗi
+    public static class Position {
+        private double x, y, z;
+        private int ticks;
+
+        public Position(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        public boolean shouldRemove() {
+            return ticks++ > ModuleManager.aura.backTicks.getValue();
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public double getZ() {
+            return z;
+        }
     }
 
     private float getRange(){
@@ -401,6 +435,11 @@ public class Aura extends Module {
         delayTimer.reset();
     }
 
+    @Override
+    public void onDisable() {
+        target = null;
+    }
+
     private boolean autoCrit() {
         boolean reasonForSkipCrit =
                 !smartCrit.getValue().isEnabled()
@@ -434,6 +473,7 @@ public class Aura extends Module {
         if (!mc.options.jumpKey.isPressed() && isAboveWater())
             return true;
 
+        // я хз почему оно не критует когда фд больше 1.14
         if (mc.player.fallDistance > 1 && mc.player.fallDistance < 1.14)
             return false;
 
@@ -442,7 +482,7 @@ public class Aura extends Module {
         return true;
     }
 
-    private boolean shieldBreaker(boolean instant) {
+    private boolean shieldBreaker(boolean instant) { //todo - Actual value of parameter 'instant' is always 'false'
         int axeSlot = InventoryUtility.getAxe().slot();
         if (axeSlot == -1) return false;
         if (!shieldBreaker.getValue()) return false;
@@ -489,14 +529,18 @@ public class Aura extends Module {
 
     private void updateTarget() {
         Entity candidat = findTarget();
+
         if (target == null) {
             target = candidat;
             return;
         }
+
         if (sort.getValue() == Sort.FOV || !lockTarget.getValue())
             target = candidat;
+
         if (candidat instanceof ProjectileEntity)
             target = candidat;
+
         if (skipEntity(target))
             target = null;
     }
@@ -507,12 +551,18 @@ public class Aura extends Module {
         } else if (trackticks > 0) {
             trackticks--;
         }
-        if (target == null) return;
+
+        if (target == null)
+            return;
+
 
         Vec3d targetVec;
+
         if (mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) targetVec = target.getEyePos();
         else targetVec = getLegitLook(target);
-        if (targetVec == null) return;
+
+        if (targetVec == null)
+            return;
 
         pitchAcceleration = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange() + aimRange.getValue(), getRange() + aimRange.getValue(), rayTrace.getValue())
                 ? aimedPitchStep.getValue() : pitchAcceleration < maxPitchStep.getValue() ? pitchAcceleration * pitchAccelerate.getValue() : maxPitchStep.getValue();
@@ -527,11 +577,17 @@ public class Aura extends Module {
             switch (accelerateOnHit.getValue()) {
                 case Yaw -> yawStep = 180f;
                 case Pitch -> pitchStep = 90f;
-                case Both -> { yawStep = 180f; pitchStep = 90f; }
+                case Both -> {
+                    yawStep = 180f;
+                    pitchStep = 90f;
+                }
             }
 
-        if (delta_yaw > 180) delta_yaw = delta_yaw - 180;
+        if (delta_yaw > 180)
+            delta_yaw = delta_yaw - 180;
+
         float deltaYaw = MathHelper.clamp(MathHelper.abs(delta_yaw), -yawStep, yawStep);
+
         float deltaPitch = MathHelper.clamp(delta_pitch, -pitchStep, pitchStep);
 
         float newYaw = rotationYaw + (delta_yaw > 0 ? deltaYaw : -deltaYaw);
@@ -547,12 +603,14 @@ public class Aura extends Module {
             rotationPitch = mc.player.getPitch();
         }
 
-        if (!rotationMode.is(Mode.Grim)) ModuleManager.rotations.fixRotation = rotationYaw;
+        if (!rotationMode.is(Mode.Grim))
+            ModuleManager.rotations.fixRotation = rotationYaw;
         lookingAtHitbox = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue());
     }
 
     public void onRender3D(MatrixStack stack) {
-        if (!haveWeapon() || target == null || mc.player == null) return;
+        if (!haveWeapon() || target == null || mc.player == null)
+            return;
 
         if ((resolver.is(Resolver.BackTrack) || resolverVisualisation.getValue()) && resolvedBox != null)
             Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(resolvedBox, HudEditor.getColor(0), 1));
@@ -562,14 +620,17 @@ public class Aura extends Module {
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+            
+            // --- LOGIC GHOST V2 ĐÃ FIX LỖI RENDER ---
             case GhostV2 -> {
                 double time = System.currentTimeMillis() / 1000.0 * ghostSpeed.getValue();
                 double x = Math.sin(time) * ghostOrbit.getValue();
                 double z = Math.cos(time) * ghostOrbit.getValue();
                 double y = (Math.sin(time * 0.5) + 1.0) * (target.getHeight() / 2.0);
+
                 Vec3d pos = target.getPos().add(x, y, z);
                 
-                // SỬA TẠI ĐÂY: Dùng drawBox để không bao giờ lỗi build
+                // Dùng drawBox để chắc chắn không lỗi symbol
                 Box ghostBox = new Box(pos.x - ghostSize.getValue(), pos.y - ghostSize.getValue(), pos.z - ghostSize.getValue(), 
                                       pos.x + ghostSize.getValue(), pos.y + ghostSize.getValue(), pos.z + ghostSize.getValue());
                 Render3DEngine.drawBox(stack, ghostBox, HudEditor.getColor(0));
@@ -582,59 +643,286 @@ public class Aura extends Module {
         }
     }
 
-    @Override public void onDisable() { target = null; }
-
     public float getSquaredRotateDistance() {
-        float dst = getRange() + aimRange.getValue();
+        float dst = getRange();
+        dst += aimRange.getValue();
         if ((mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) && target != null) dst += 4f;
         if (ModuleManager.strafe.isEnabled()) dst += 4f;
+        if (rotationMode.getValue() != Mode.Track || rayTrace.getValue() == RayTrace.OFF)
+            dst = getRange();
+
         return dst * dst;
     }
 
     public Vec3d getLegitLook(Entity target) {
-        if (rotationMotion.equals(Vec3d.ZERO)) rotationMotion = new Vec3d(random(-0.05f, 0.05f), random(-0.05f, 0.05f), random(-0.05f, 0.05f));
+
+        float minMotionXZ = 0.003f;
+        float maxMotionXZ = 0.03f;
+
+        float minMotionY = 0.001f;
+        float maxMotionY = 0.03f;
+
+        double lenghtX = target.getBoundingBox().getLengthX();
+        double lenghtY = target.getBoundingBox().getLengthY();
+        double lenghtZ = target.getBoundingBox().getLengthZ();
+
+
+        // Задаем начальную скорость точки
+        if (rotationMotion.equals(Vec3d.ZERO))
+            rotationMotion = new Vec3d(random(-0.05f, 0.05f), random(-0.05f, 0.05f), random(-0.05f, 0.05f));
+
         rotationPoint = rotationPoint.add(rotationMotion);
-        if (rotationPoint.x >= (target.getBoundingBox().getLengthX() - 0.05) / 2f) rotationMotion = new Vec3d(-random(0.003f, 0.03f), rotationMotion.getY(), rotationMotion.getZ());
-        if (rotationPoint.y >= target.getBoundingBox().getLengthY()) rotationMotion = new Vec3d(rotationMotion.getX(), -random(0.001f, 0.03f), rotationMotion.getZ());
-        if (rotationPoint.z >= (target.getBoundingBox().getLengthZ() - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), -random(0.003f, 0.03f));
-        if (rotationPoint.x <= -(target.getBoundingBox().getLengthX() - 0.05) / 2f) rotationMotion = new Vec3d(random(0.003f, 0.03f), rotationMotion.getY(), rotationMotion.getZ());
-        if (rotationPoint.y <= 0.05) rotationMotion = new Vec3d(rotationMotion.getX(), random(0.001f, 0.03f), rotationMotion.getZ());
-        if (rotationPoint.z <= -(target.getBoundingBox().getLengthZ() - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), random(0.003f, 0.03f));
+
+        // Сталкиваемся с хитбоксом по X
+        if (rotationPoint.x >= (lenghtX - 0.05) / 2f)
+            rotationMotion = new Vec3d(-random(minMotionXZ, maxMotionXZ), rotationMotion.getY(), rotationMotion.getZ());
+
+        // Сталкиваемся с хитбоксом по Y
+        if (rotationPoint.y >= lenghtY)
+            rotationMotion = new Vec3d(rotationMotion.getX(), -random(minMotionY, maxMotionY), rotationMotion.getZ());
+
+        // Сталкиваемся с хитбоксом по Z
+        if (rotationPoint.z >= (lenghtZ - 0.05) / 2f)
+            rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), -random(minMotionXZ, maxMotionXZ));
+
+        // Сталкиваемся с хитбоксом по -X
+        if (rotationPoint.x <= -(lenghtX - 0.05) / 2f)
+            rotationMotion = new Vec3d(random(minMotionXZ, 0.03f), rotationMotion.getY(), rotationMotion.getZ());
+
+        // Сталкиваемся с хитбоксом по -Y
+        if (rotationPoint.y <= 0.05)
+            rotationMotion = new Vec3d(rotationMotion.getX(), random(minMotionY, maxMotionY), rotationMotion.getZ());
+
+        // Сталкиваемся с хитбоксом по -Z
+        if (rotationPoint.z <= -(lenghtZ - 0.05) / 2f)
+            rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), random(minMotionXZ, maxMotionXZ));
+
+        // Добавляем джиттер
+        rotationPoint.add(random(-0.03f, 0.03f), 0f, random(-0.03f, 0.03f));
+
+        if (!mc.player.canSee(target)) {
+            // Если мы используем обход ударов через стену V1 и наша цель за стеной, то целимся в верхушку хитбокса т.к. матриксу поебать
+            if (Objects.requireNonNull(wallsBypass.getValue()) == WallsBypass.V1) {
+                return target.getPos().add(random(-0.15, 0.15), lenghtY, random(-0.15, 0.15));
+            }
+        }
+
+        float[] rotation;
+
+        // Если мы перестали смотреть на цель
+        if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
+            float[] rotation1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
+
+            // Проверяем видимость центра игрока
+            if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0)) <= attackRange.getPow2Value()
+                    && Managers.PLAYER.checkRtx(rotation1[0], rotation1[1], getRange(), 0, rayTrace.getValue())) {
+                // наводим на центр
+                rotationPoint = new Vec3d(random(-0.1f, 0.1f), target.getEyeHeight(target.getPose()) / (random(1.8f, 2.5f)), random(-0.1f, 0.1f));
+            } else {
+                // Сканим хитбокс на видимую точку
+                float halfBox = (float) (lenghtX / 2f);
+
+                for (float x1 = -halfBox; x1 <= halfBox; x1 += 0.05f) {
+                    for (float z1 = -halfBox; z1 <= halfBox; z1 += 0.05f) {
+                        for (float y1 = 0.05f; y1 <= target.getBoundingBox().getLengthY(); y1 += 0.15f) {
+
+                            Vec3d v1 = new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1);
+
+                            // Скипаем, если вне досягаемости
+                            if (PlayerUtility.squaredDistanceFromEyes(v1) > attackRange.getPow2Value()) continue;
+
+                            rotation = Managers.PLAYER.calcAngle(v1);
+                            if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], getRange(), 0, rayTrace.getValue())) {
+                                // Наводимся, если видим эту точку
+                                rotationPoint = new Vec3d(x1, y1, z1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return target.getPos().add(rotationPoint);
     }
 
     public boolean isInRange(Entity target) {
-        if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) return false;
-        return PlayerUtility.squaredDistanceFromEyes(target.getPos()) <= getSquaredRotateDistance();
+
+        if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) {
+            return false;
+        }
+
+        float[] rotation;
+        float halfBox = (float) (target.getBoundingBox().getLengthX() / 2f);
+
+        // уменьшил частоту выборки
+        for (float x1 = -halfBox; x1 <= halfBox; x1 += 0.15f) {
+            for (float z1 = -halfBox; z1 <= halfBox; z1 += 0.15f) {
+                for (float y1 = 0.05f; y1 <= target.getBoundingBox().getLengthY(); y1 += 0.25f) {
+                    if (PlayerUtility.squaredDistanceFromEyes(new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1)) > getSquaredRotateDistance())
+                        continue;
+
+                    rotation = Managers.PLAYER.calcAngle(new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1));
+                    if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], (float) Math.sqrt(getSquaredRotateDistance()), getWallRange(), rayTrace.getValue())) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     public Entity findTarget() {
-        List<LivingEntity> targetsList = new CopyOnWriteArrayList<>();
+        List<LivingEntity> first_stage = new CopyOnWriteArrayList<>();
         for (Entity ent : mc.world.getEntities()) {
+            if ((ent instanceof ShulkerBulletEntity || ent instanceof FireballEntity)
+                    && ent.isAlive()
+                    && isInRange(ent)
+                    && Projectiles.getValue()) {
+                return ent;
+            }
             if (skipEntity(ent)) continue;
-            if (ent instanceof LivingEntity) targetsList.add((LivingEntity) ent);
+            if (!(ent instanceof LivingEntity)) continue;
+            first_stage.add((LivingEntity) ent);
         }
-        return targetsList.stream().min(Comparator.comparing(e -> mc.player.squaredDistanceTo(e.getPos()))).orElse(null);
+
+        return switch (sort.getValue()) {
+            case LowestDistance ->
+                    first_stage.stream().min(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
+
+            case HighestDistance ->
+                    first_stage.stream().max(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
+
+            case FOV -> first_stage.stream().min(Comparator.comparing(this::getFOVAngle)).orElse(null);
+
+            case LowestHealth ->
+                    first_stage.stream().min(Comparator.comparing(e -> (e.getHealth() + e.getAbsorptionAmount()))).orElse(null);
+
+            case HighestHealth ->
+                    first_stage.stream().max(Comparator.comparing(e -> (e.getHealth() + e.getAbsorptionAmount()))).orElse(null);
+
+            case LowestDurability -> first_stage.stream().min(Comparator.comparing(e -> {
+                        float v = 0;
+                        for (ItemStack armor : e.getArmorItems())
+                            if (armor != null && !armor.getItem().equals(Items.AIR)) {
+                                v += ((armor.getMaxDamage() - armor.getDamage()) / (float) armor.getMaxDamage());
+                            }
+                        return v;
+                    }
+            )).orElse(null);
+
+            case HighestDurability -> first_stage.stream().max(Comparator.comparing(e -> {
+                        float v = 0;
+                        for (ItemStack armor : e.getArmorItems())
+                            if (armor != null && !armor.getItem().equals(Items.AIR)) {
+                                v += ((armor.getMaxDamage() - armor.getDamage()) / (float) armor.getMaxDamage());
+                            }
+                        return v;
+                    }
+            )).orElse(null);
+        };
     }
 
     private boolean skipEntity(Entity entity) {
+        if (isBullet(entity)) return false;
         if (!(entity instanceof LivingEntity ent)) return true;
-        if (ent == mc.player || !ent.isAlive() || ent.isDead()) return true;
-        if (ent instanceof PlayerEntity && (Managers.FRIEND.isFriend((PlayerEntity) ent) || ((PlayerEntity) ent).isCreative())) return true;
-        return !isInRange(entity);
+        if (ent.isDead() || !entity.isAlive()) return true;
+        if (entity instanceof ArmorStandEntity) return true;
+        if (entity instanceof CatEntity) return true;
+        if (skipNotSelected(entity)) return true;
+        if (!InteractionUtility.isVecInFOV(ent.getPos(), fov.getValue())) return true;
+
+        if (entity instanceof PlayerEntity player) {
+            // if (ModuleManager.antiBot.isEnabled() && AntiBot.bots.contains(entity)) return true; // Cmt lại nếu AntiBot gây lỗi
+            if (player == mc.player || Managers.FRIEND.isFriend(player))
+                return true;
+            if (player.isCreative() && ignoreCreative.getValue())
+                return true;
+            if (player.getArmor() == 0 && ignoreNaked.getValue())
+                return true;
+            if (player.isInvisible() && ignoreInvisible.getValue())
+                return true;
+            if (player.getTeamColorValue() == mc.player.getTeamColorValue() && ignoreTeam.getValue() && mc.player.getTeamColorValue() != 16777215)
+                return true;
+        }
+
+        return !isInRange(entity) || (entity.hasCustomName() && ignoreNamed.getValue());
     }
 
-    public void pause() { pauseTimer.reset(); }
-    private boolean shouldRandomizeDelay() { return randomHitDelay.getValue() && mc.player.isOnGround(); }
-    private boolean shouldRandomizeFallDistance() { return randomHitDelay.getValue() && !shouldRandomizeDelay(); }
+    private boolean isBullet(Entity entity) {
+        return (entity instanceof ShulkerBulletEntity || entity instanceof FireballEntity)
+                && entity.isAlive()
+                && PlayerUtility.squaredDistanceFromEyes(entity.getPos()) < getSquaredRotateDistance()
+                && Projectiles.getValue();
+    }
 
-    public enum RayTrace { OFF, OnlyTarget, AllEntities }
-    public enum Sort { LowestDistance, HighestDistance, LowestHealth, HighestHealth, LowestDurability, HighestDurability, FOV }
-    public enum Switch { Normal, None, Silent }
-    public enum Resolver { Off, Advantage, Predictive, BackTrack }
-    public enum Mode { Interact, Track, Grim, None }
-    public enum AttackHand { MainHand, OffHand, None }
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, GhostV2 }
-    public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
-    public enum WallsBypass { Off, V1, V2 }
+    private boolean skipNotSelected(Entity entity) {
+        if (entity instanceof SlimeEntity && !Slimes.getValue()) return true;
+        if (entity instanceof HostileEntity he) {
+            if (!hostiles.getValue())
+                return true;
+
+            if (onlyAngry.getValue())
+                return !he.isAngryAt(mc.player);
+        }
+
+        if (entity instanceof PlayerEntity && !Players.getValue()) return true;
+        if (entity instanceof VillagerEntity && !Villagers.getValue()) return true;
+        if (entity instanceof MobEntity && !Mobs.getValue()) return true;
+        return entity instanceof AnimalEntity && !Animals.getValue();
+    }
+
+    private float getFOVAngle(@NotNull LivingEntity e) {
+        double difX = e.getX() - mc.player.getX();
+        double difZ = e.getZ() - mc.player.getZ();
+        float yaw = (float) MathHelper.wrapDegrees(Math.toDegrees(Math.atan2(difZ, difX)) - 90.0);
+        return Math.abs(yaw - MathHelper.wrapDegrees(mc.player.getYaw()));
+    }
+
+    public void pause() {
+        pauseTimer.reset();
+    }
+
+    private boolean shouldRandomizeDelay() {
+        return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f || mc.player.isSwimming() || mc.player.isFallFlying());
+    }
+
+    private boolean shouldRandomizeFallDistance() {
+        return randomHitDelay.getValue() && !shouldRandomizeDelay();
+    }
+
+    public enum RayTrace {
+        OFF, OnlyTarget, AllEntities
+    }
+
+    public enum Sort {
+        LowestDistance, HighestDistance, LowestHealth, HighestHealth, LowestDurability, HighestDurability, FOV
+    }
+
+    public enum Switch {
+        Normal, None, Silent
+    }
+
+    public enum Resolver {
+        Off, Advantage, Predictive, BackTrack
+    }
+
+    public enum Mode {
+        Interact, Track, Grim, None
+    }
+
+    public enum AttackHand {
+        MainHand, OffHand, None
+    }
+
+    public enum ESP {
+        Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, GhostV2
+    }
+
+    public enum AccelerateOnHit {
+        Off, Yaw, Pitch, Both
+    }
+
+    public enum WallsBypass {
+        Off, V1, V2
+    }
 }
