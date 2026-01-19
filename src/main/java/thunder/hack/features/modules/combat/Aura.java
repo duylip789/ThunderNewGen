@@ -87,6 +87,7 @@ public class Aura extends Module {
     public final Setting<Integer> minCPS = new Setting<>("MinCPS", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("MaxCPS", 12, 1, 20).addToGroup(oldDelay);
 
+    // THÊM GHOSTV2 VÀO ĐÂY
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack);
     public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2));
     public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
@@ -94,11 +95,17 @@ public class Aura extends Module {
     public final Setting<Float> espShaking = new Setting<>("ESPShaking", 1.8f, 1.5f, 10f, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
     public final Setting<Float> espAmplitude = new Setting<>("ESPAmplitude", 3f, 0.1f, 8f, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
 
+    // SETTING RIÊNG CHO GHOSTV2
+    public final Setting<SettingGroup> ghostGroup = new Setting<>("GhostV2Settings", new SettingGroup(false, 0), v -> esp.is(ESP.GhostV2));
+    public final Setting<Float> ghostSpeed = new Setting<>("GhostSpeed", 3.0f, 1.0f, 10.0f, v -> esp.is(ESP.GhostV2)).addToGroup(ghostGroup);
+    public final Setting<Float> ghostSize = new Setting<>("GhostSize", 0.4f, 0.1f, 1.5f, v -> esp.is(ESP.GhostV2)).addToGroup(ghostGroup);
+    public final Setting<Float> ghostOrbit = new Setting<>("GhostOrbit", 0.8f, 0.3f, 2.0f, v -> esp.is(ESP.GhostV2)).addToGroup(ghostGroup);
+
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
 
-    /*   ADVANCED   */
+    /* ADVANCED   */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -129,7 +136,7 @@ public class Aura extends Module {
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
 
-    /*   TARGETS   */
+    /* TARGETS   */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -290,6 +297,13 @@ public class Aura extends Module {
                     ((IOtherClientPlayerEntity) player).resolve(resolver.getValue());
     }
 
+    public void releaseResolver() {
+        if (resolver.not(Resolver.Off))
+            for (PlayerEntity player : mc.world.getPlayers())
+                if (player instanceof OtherClientPlayerEntity)
+                    ((IOtherClientPlayerEntity) player).releaseResolver();
+    }
+
     public void restorePlayers() {
         if (resolver.not(Resolver.Off))
             for (PlayerEntity player : mc.world.getPlayers())
@@ -315,7 +329,7 @@ public class Aura extends Module {
     }
 
     private int getHitTicks() {
-        return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (shouldRandomizeDelay() ? (int) MathUtility.random(11, 13) : attackTickLimit.getValue());
+        return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), random(minCPS.getValue(), maxCPS.getValue()))) : (shouldRandomizeDelay() ? (int) MathUtility.random(11, 13) : attackTickLimit.getValue());
     }
 
     @EventHandler
@@ -585,6 +599,20 @@ public class Aura extends Module {
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+            
+            // LOGIC GHOSTV2 XOAY VÀ LÊN XUỐNG
+            case GhostV2 -> {
+                double time = System.currentTimeMillis() / 1000.0 * ghostSpeed.getValue();
+                double x = Math.sin(time) * ghostOrbit.getValue();
+                double z = Math.cos(time) * ghostOrbit.getValue();
+                double y = (Math.sin(time * 0.5) + 1.0) * (target.getHeight() / 2.0); // Di chuyển mượt từ chân lên đầu
+
+                Vec3d pos = target.getPos().add(x, y, z);
+                
+                // Vẽ Ghost hình khối nhỏ hoặc hình tròn
+                Render3DEngine.drawFilledCircle(stack, pos, ghostSize.getValue(), HudEditor.getColor(0));
+                Render3DEngine.drawCircle(stack, pos, ghostSize.getValue(), HudEditor.getColor(0));
+            }
         }
 
         if (clientLook.getValue() && rotationMode.getValue() != Mode.None) {
@@ -608,14 +636,6 @@ public class Aura extends Module {
 
         return dst * dst;
     }
-
-    /*
-     * Эта хуеверть основанна на приципе "DVD Logo"
-     * У нас есть точка и "коробка" (хитбокс цели)
-     * Точка летает внутри коробки и отталкивается от стенок с рандомной скоростью и легким джиттером
-     * Также выбирает лучшую дистанцию для удара, то есть считает не от центра до центра, а от наших глаз до достигаемых точек хитбокса цели
-     * Со стороны не сильно заметно что ты играешь с киллкой, в отличие от аур семейства Wexside
-     */
 
     public Vec3d getLegitLook(Entity target) {
 
@@ -672,17 +692,17 @@ public class Aura extends Module {
 
         float[] rotation;
 
-        // Если мы перестали смотреть на цель
+        // Nếu chúng ta ngừng nhìn vào mục tiêu
         if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
             float[] rotation1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
 
-            // Проверяем видимость центра игрока
+            // Kiểm tra khả năng nhìn trung tâm người chơi
             if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0)) <= attackRange.getPow2Value()
                     && Managers.PLAYER.checkRtx(rotation1[0], rotation1[1], getRange(), 0, rayTrace.getValue())) {
-                // наводим на центр
+                // Nhắm vào tâm
                 rotationPoint = new Vec3d(random(-0.1f, 0.1f), target.getEyeHeight(target.getPose()) / (random(1.8f, 2.5f)), random(-0.1f, 0.1f));
             } else {
-                // Сканим хитбокс на видимую точку
+                // Quét hitbox tìm điểm nhìn thấy
                 float halfBox = (float) (lenghtX / 2f);
 
                 for (float x1 = -halfBox; x1 <= halfBox; x1 += 0.05f) {
@@ -691,12 +711,12 @@ public class Aura extends Module {
 
                             Vec3d v1 = new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1);
 
-                            // Скипаем, если вне досягаемости
+                            // Bỏ qua nếu quá xa
                             if (PlayerUtility.squaredDistanceFromEyes(v1) > attackRange.getPow2Value()) continue;
 
                             rotation = Managers.PLAYER.calcAngle(v1);
                             if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], getRange(), 0, rayTrace.getValue())) {
-                                // Наводимся, если видим эту точку
+                                // Nhắm vào nếu thấy điểm này
                                 rotationPoint = new Vec3d(x1, y1, z1);
                                 break;
                             }
@@ -717,7 +737,6 @@ public class Aura extends Module {
         float[] rotation;
         float halfBox = (float) (target.getBoundingBox().getLengthX() / 2f);
 
-        // уменьшил частоту выборки
         for (float x1 = -halfBox; x1 <= halfBox; x1 += 0.15f) {
             for (float z1 = -halfBox; z1 <= halfBox; z1 += 0.15f) {
                 for (float y1 = 0.05f; y1 <= target.getBoundingBox().getLengthY(); y1 += 0.25f) {
@@ -907,7 +926,7 @@ public class Aura extends Module {
     }
 
     public enum ESP {
-        Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2
+        Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, GhostV2
     }
 
     public enum AccelerateOnHit {
