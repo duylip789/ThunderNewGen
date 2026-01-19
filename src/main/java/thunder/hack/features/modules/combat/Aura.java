@@ -58,7 +58,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.StreamSupport;
 
 import static net.minecraft.util.UseAction.BLOCK;
 import static net.minecraft.util.math.MathHelper.wrapDegrees;
@@ -66,17 +65,15 @@ import static thunder.hack.features.modules.client.ClientSettings.isRu;
 import static thunder.hack.utility.math.MathUtility.random;
 
 public class Aura extends Module {
-    /* --- SETTINGS MAIN --- */
+    /* SETTINGS - GIỮ NGUYÊN VÀ THÊM MỚI */
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
     public final Setting<Float> elytraAttackRange = new Setting<>("ElytraRange", 3.1f, 1f, 6.0f, v -> elytra.getValue());
     public final Setting<Float> elytraWallRange = new Setting<>("ElytraThroughWallsRange", 3.1f, 0f, 6.0f, v -> elytra.getValue());
-    
-    // WallsBypass
     public final Setting<WallsBypass> wallsBypass = new Setting<>("WallsBypass", WallsBypass.Off, v -> getWallRange() > 0);
     
-    // SPRINT (Nằm dưới WallsBypass như yêu cầu)
+    // Thêm Sprint
     public final Setting<SprintMode> sprint = new Setting<>("Sprint", SprintMode.Legit);
 
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
@@ -84,31 +81,33 @@ public class Aura extends Module {
     public final Setting<Integer> interactTicks = new Setting<>("InteractTicks", 3, 1, 10, v -> rotationMode.getValue() == Mode.Interact);
     public final Setting<Switch> switchMode = new Setting<>("AutoWeapon", Switch.None);
     public final Setting<Boolean> onlyWeapon = new Setting<>("OnlyWeapon", false, v -> switchMode.getValue() != Switch.Silent);
-    
     public final Setting<BooleanSettingGroup> smartCrit = new Setting<>("SmartCrit", new BooleanSettingGroup(true));
     public final Setting<Boolean> onlySpace = new Setting<>("OnlyCrit", false).addToGroup(smartCrit);
     public final Setting<Boolean> autoJump = new Setting<>("AutoJump", false).addToGroup(smartCrit);
-    
     public final Setting<Boolean> shieldBreaker = new Setting<>("ShieldBreaker", true);
     public final Setting<Boolean> pauseWhileEating = new Setting<>("PauseWhileEating", false);
     public final Setting<Boolean> tpsSync = new Setting<>("TPSSync", false);
     public final Setting<Boolean> clientLook = new Setting<>("ClientLook", false);
     public final Setting<Boolean> pauseBaritone = new Setting<>("PauseBaritone", false);
-    
     public final Setting<BooleanSettingGroup> oldDelay = new Setting<>("OldDelay", new BooleanSettingGroup(false));
     public final Setting<Integer> minCPS = new Setting<>("MinCPS", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("MaxCPS", 12, 1, 20).addToGroup(oldDelay);
 
+    // ESP - GIỮ THUNDERV2 VÀ THÊM GHOSTV2
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack);
-    public final Setting<SettingGroup> ghostGroup = new Setting<>("GhostSettings", new SettingGroup(false, 0), v -> esp.is(ESP.Ghost));
-    public final Setting<Float> ghostSpeed = new Setting<>("GhostSpeed", 3.0f, 1.0f, 10.0f, v -> esp.is(ESP.Ghost)).addToGroup(ghostGroup);
-    public final Setting<Float> ghostOrbit = new Setting<>("GhostOrbit", 0.8f, 0.3f, 2.0f, v -> esp.is(ESP.Ghost)).addToGroup(ghostGroup);
+    public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2));
+    public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2)).addToGroup(espGroup);
+    public final Setting<Integer> espFactor = new Setting<>("ESPFactor", 8, 1, 20, v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2)).addToGroup(espGroup);
+    public final Setting<Float> espShaking = new Setting<>("ESPShaking", 1.8f, 1.5f, 10f, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
+    public final Setting<Float> espAmplitude = new Setting<>("ESPAmplitude", 3f, 0.1f, 8f, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
+    // Setting riêng cho GhostV2
+    public final Setting<Float> ghostAlpha = new Setting<>("GhostAlpha", 0.6f, 0.1f, 1f, v -> esp.is(ESP.GhostV2)).addToGroup(espGroup);
 
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
 
-    /* --- ADVANCED SETTINGS --- */
+    /* ADVANCED */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -127,14 +126,18 @@ public class Aura extends Module {
     public final Setting<Resolver> resolver = new Setting<>("Resolver", Resolver.Advantage).addToGroup(advanced);
     public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20, v -> resolver.is(Resolver.BackTrack)).addToGroup(advanced);
     public final Setting<Boolean> resolverVisualisation = new Setting<>("ResolverVisualisation", false, v -> !resolver.is(Resolver.Off)).addToGroup(advanced);
+    public final Setting<AccelerateOnHit> accelerateOnHit = new Setting<>("AccelerateOnHit", AccelerateOnHit.Off).addToGroup(advanced);
     public final Setting<Integer> minYawStep = new Setting<>("MinYawStep", 65, 1, 180).addToGroup(advanced);
     public final Setting<Integer> maxYawStep = new Setting<>("MaxYawStep", 75, 1, 180).addToGroup(advanced);
+    public final Setting<Float> aimedPitchStep = new Setting<>("AimedPitchStep", 1f, 0f, 90f).addToGroup(advanced);
+    public final Setting<Float> maxPitchStep = new Setting<>("MaxPitchStep", 8f, 1f, 90f).addToGroup(advanced);
+    public final Setting<Float> pitchAccelerate = new Setting<>("PitchAccelerate", 1.65f, 1f, 10f).addToGroup(advanced);
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(advanced);
     public final Setting<Float> attackBaseTime = new Setting<>("AttackBaseTime", 0.5f, 0f, 2f).addToGroup(advanced);
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
-    /* --- TARGET SETTINGS --- */
+    /* TARGETS */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -142,13 +145,22 @@ public class Aura extends Module {
     public final Setting<Boolean> Villagers = new Setting<>("Villagers", true).addToGroup(targets);
     public final Setting<Boolean> Slimes = new Setting<>("Slimes", true).addToGroup(targets);
     public final Setting<Boolean> hostiles = new Setting<>("Hostiles", true).addToGroup(targets);
+    public final Setting<Boolean> onlyAngry = new Setting<>("OnlyAngryHostiles", true, v -> hostiles.getValue()).addToGroup(targets);
+    public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", true).addToGroup(targets);
     public final Setting<Boolean> ignoreInvisible = new Setting<>("IgnoreInvisibleEntities", false).addToGroup(targets);
+    public final Setting<Boolean> ignoreNamed = new Setting<>("IgnoreNamed", false).addToGroup(targets);
+    public final Setting<Boolean> ignoreTeam = new Setting<>("IgnoreTeam", false).addToGroup(targets);
     public final Setting<Boolean> ignoreCreative = new Setting<>("IgnoreCreative", true).addToGroup(targets);
+    public final Setting<Boolean> ignoreNaked = new Setting<>("IgnoreNaked", false).addToGroup(targets);
+    public final Setting<Boolean> ignoreShield = new Setting<>("AttackShieldingEntities", true).addToGroup(targets);
 
-    /* --- VARIABLES --- */
+    // VARIABLES
     public static Entity target;
     public float rotationYaw;
     public float rotationPitch;
+    public float pitchAcceleration = 1f;
+    private Vec3d rotationPoint = Vec3d.ZERO;
+    private Vec3d rotationMotion = Vec3d.ZERO;
     private int hitTicks;
     private int trackticks;
     private boolean lookingAtHitbox;
@@ -156,107 +168,91 @@ public class Aura extends Module {
     private final Timer pauseTimer = new Timer();
     public Box resolvedBox;
     static boolean wasTargeted = false;
+    
+    // GhostV2 Cache
+    private final List<GhostData> ghostList = new ArrayList<>();
 
     public Aura() {
         super("Aura", Category.COMBAT);
     }
 
-    /* --- PUBLIC API FOR OTHER MODULES --- */
-    public void pause() {
-        pauseTimer.reset();
-    }
-
-    public float getRange() {
+    private float getRange() {
         return elytra.getValue() && mc.player != null && mc.player.isFallFlying() ? elytraAttackRange.getValue() : attackRange.getValue();
     }
 
-    public float getWallRange() {
+    private float getWallRange() {
         return elytra.getValue() && mc.player != null && mc.player.isFallFlying() ? elytraWallRange.getValue() : wallRange.getValue();
     }
 
-    /* --- CORE LOGIC --- */
     public void auraLogic() {
-        if (!haveWeapon() || mc.player == null) { target = null; return; }
+        if (!haveWeapon()) {
+            target = null;
+            return;
+        }
+
         handleKill();
         updateTarget();
+
         if (target == null) return;
 
         if (!mc.options.jumpKey.isPressed() && mc.player.isOnGround() && autoJump.getValue())
             mc.player.jump();
 
-        boolean ready;
+        boolean readyForAttack;
         if (grimRayTrace.getValue()) {
-            ready = autoCrit() && (lookingAtHitbox || skipRayTraceCheck());
+            readyForAttack = autoCrit() && (lookingAtHitbox || skipRayTraceCheck());
             calcRotations(autoCrit());
         } else {
             calcRotations(autoCrit());
-            ready = autoCrit() && (lookingAtHitbox || skipRayTraceCheck());
+            readyForAttack = autoCrit() && (lookingAtHitbox || skipRayTraceCheck());
         }
 
-        if (ready) {
+        if (readyForAttack) {
             if (shieldBreaker(false)) return;
-            boolean[] state = preAttack();
-            if (!(target instanceof PlayerEntity pl) || !(pl.isUsingItem() && pl.getOffHandStack().getItem() == Items.SHIELD))
+            boolean[] playerState = preAttack();
+            if (!(target instanceof PlayerEntity pl) || !(pl.isUsingItem() && pl.getOffHandStack().getItem() == Items.SHIELD) || ignoreShield.getValue())
                 attack();
-            postAttack(state[0], state[1]);
+            postAttack(playerState[0], playerState[1]);
         }
     }
 
     private boolean haveWeapon() {
-        Item item = mc.player.getMainHandStack().getItem();
+        Item handItem = mc.player.getMainHandStack().getItem();
         if (onlyWeapon.getValue()) {
-            if (switchMode.getValue() == Switch.None)
-                return item instanceof SwordItem || item instanceof AxeItem || item instanceof TridentItem;
-            else
+            if (switchMode.getValue() == Switch.None) {
+                return handItem instanceof SwordItem || handItem instanceof AxeItem || handItem instanceof TridentItem;
+            } else {
                 return (InventoryUtility.getSwordHotBar().found() || InventoryUtility.getAxeHotBar().found());
+            }
         }
         return true;
     }
 
     private boolean skipRayTraceCheck() {
-        return rotationMode.getValue() == Mode.None || rayTrace.getValue() == RayTrace.OFF || rotationMode.is(Mode.Grim);
+        return rotationMode.getValue() == Mode.None || rayTrace.getValue() == RayTrace.OFF || rotationMode.is(Mode.Grim) || (rotationMode.is(Mode.Interact) && (interactTicks.getValue() <= 1 || mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext()));
     }
 
     public void attack() {
         Criticals.cancelCrit = true;
         ModuleManager.criticals.doCrit();
-        int prev = switchMethod();
-        
-        // SPRINT MODES LOGIC
-        applySprintLogic();
+        int prevSlot = switchMethod();
+
+        // Sprint Mode HvH
+        if (sprint.getValue() == SprintMode.HvH && mc.player.isSprinting()) {
+            mc.player.setSprinting(false);
+            mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
+        }
 
         mc.interactionManager.attackEntity(mc.player, target);
         Criticals.cancelCrit = false;
         swingHand();
         hitTicks = getHitTicks();
-        if (prev != -1) InventoryUtility.switchTo(prev);
+        if (prevSlot != -1) InventoryUtility.switchTo(prevSlot);
     }
 
-    private void applySprintLogic() {
-        switch (sprint.getValue()) {
-            case HvH:
-                // Tối ưu hit nhanh bằng cách ngắt sprint để reset KB ngay lập tức
-                if (mc.player.isSprinting()) {
-                    mc.player.setSprinting(false);
-                    mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
-                }
-                break;
-            case SMP:
-                // Chạy mượt, luôn bật sprint khi di chuyển tới để tăng dame va chạm
-                if (!mc.player.isSprinting() && mc.player.forwardSpeed > 0) {
-                    mc.player.setSprinting(true);
-                    mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
-                }
-                break;
-            case Legit:
-                // Giữ nguyên trạng thái của người chơi
-                break;
-        }
-    }
-
-    private boolean[] preAttack() {
-        boolean block = mc.player.isUsingItem() && mc.player.getActiveItem().getItem().getUseAction(mc.player.getActiveItem()) == BLOCK;
-        if (block && unpressShield.getValue())
+    private boolean @NotNull [] preAttack() {
+        boolean blocking = mc.player.isUsingItem() && mc.player.getActiveItem().getItem().getUseAction(mc.player.getActiveItem()) == BLOCK;
+        if (blocking && unpressShield.getValue())
             mc.player.networkHandler.sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, Direction.DOWN));
 
         boolean sprintActive = Core.serverSprint;
@@ -265,124 +261,174 @@ public class Aura extends Module {
         if (rotationMode.is(Mode.Grim))
             mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), rotationYaw, rotationPitch, mc.player.isOnGround()));
 
-        return new boolean[]{block, sprintActive};
+        return new boolean[]{blocking, sprintActive};
     }
 
     public void postAttack(boolean block, boolean sprintActive) {
         if (sprintActive && returnSprint.getValue() && dropSprint.getValue()) enableSprint();
-        if (block && unpressShield.getValue())
-            Managers.PACKET.sendSequencedPacket(id -> new PlayerInteractItemC2SPacket(Hand.OFF_HAND, id, rotationYaw, rotationPitch));
+        if (block && unpressShield.getValue()) {
+             mc.player.networkHandler.sendSequencedPacket(id -> new PlayerInteractItemC2SPacket(Hand.OFF_HAND, id, rotationYaw, rotationPitch));
+        }
+        if (rotationMode.is(Mode.Grim))
+            mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYaw(), mc.player.getPitch(), mc.player.isOnGround()));
     }
 
     private void disableSprint() {
         mc.player.setSprinting(false);
+        mc.options.sprintKey.setPressed(false);
         mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
     }
 
     private void enableSprint() {
         mc.player.setSprinting(true);
+        mc.options.sprintKey.setPressed(true);
         mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
     }
 
+    public void resolvePlayers() {
+        if (resolver.not(Resolver.Off))
+            for (PlayerEntity player : mc.world.getPlayers())
+                if (player instanceof OtherClientPlayerEntity)
+                    ((IOtherClientPlayerEntity) player).resolve(resolver.getValue());
+    }
+
+    public void restorePlayers() {
+        if (resolver.not(Resolver.Off))
+            for (PlayerEntity player : mc.world.getPlayers())
+                if (player instanceof OtherClientPlayerEntity)
+                    ((IOtherClientPlayerEntity) player).releaseResolver();
+    }
+
+    public void handleKill() {
+        if (target instanceof LivingEntity && (((LivingEntity) target).getHealth() <= 0 || ((LivingEntity) target).isDead()))
+            Managers.NOTIFICATION.publicity("Aura", isRu() ? "Цель успешно нейтрализована!" : "Target successfully neutralized!", 3, Notification.Type.SUCCESS);
+    }
+
     private int switchMethod() {
-        int prev = -1;
-        SearchInvResult res = InventoryUtility.getSwordHotBar();
-        if (res.found() && switchMode.getValue() != Switch.None) {
-            if (switchMode.getValue() == Switch.Silent) prev = mc.player.getInventory().selectedSlot;
-            res.switchTo();
+        int prevSlot = -1;
+        SearchInvResult swordResult = InventoryUtility.getSwordHotBar();
+        if (swordResult.found() && switchMode.getValue() != Switch.None) {
+            if (switchMode.getValue() == Switch.Silent)
+                prevSlot = mc.player.getInventory().selectedSlot;
+            swordResult.switchTo();
         }
-        return prev;
+        return prevSlot;
     }
 
     private int getHitTicks() {
-        return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (randomHitDelay.getValue() ? (int)MathUtility.random(11, 13) : attackTickLimit.getValue());
+        return oldDelay.getValue().isEnabled() ? 1 + (int) (20f / random(minCPS.getValue(), maxCPS.getValue())) : (shouldRandomizeDelay() ? (int) MathUtility.random(11, 13) : attackTickLimit.getValue());
     }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
-        if (!pauseTimer.passedMs(1000) || mc.player == null) return;
+        if (!pauseTimer.passedMs(1000)) return;
         if (mc.player.isUsingItem() && pauseWhileEating.getValue()) return;
-        
-        if(pauseBaritone.getValue() && ThunderHack.baritone){
-            if (target != null && !wasTargeted) { BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("pause"); wasTargeted = true; }
-            else if (target == null && wasTargeted) { BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("resume"); wasTargeted = false; }
+        if (pauseBaritone.getValue() && ThunderHack.baritone) {
+            boolean isTargeted = (target != null);
+            if (isTargeted && !wasTargeted) {
+                BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("pause");
+                wasTargeted = true;
+            } else if (!isTargeted && wasTargeted) {
+                BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().execute("resume");
+                wasTargeted = false;
+            }
         }
-
         resolvePlayers();
         auraLogic();
         restorePlayers();
         hitTicks--;
+
+        // Cập nhật logic GhostV2
+        if (target != null && esp.is(ESP.GhostV2)) {
+            ghostList.add(new GhostData(target.getX(), target.getY(), target.getZ(), target.getYaw(), target.getPitch(), (LivingEntity) target));
+        }
+        if (ghostList.size() > espLength.getValue()) ghostList.remove(0);
     }
 
     @EventHandler
     public void onSync(EventSync e) {
-        if (mc.player == null || target == null) return;
-        if (rotationMode.getValue() != Mode.None && rotationMode.getValue() != Mode.Grim) {
+        if (!pauseTimer.passedMs(1000) || (mc.player.isUsingItem() && pauseWhileEating.getValue()) || !haveWeapon()) return;
+
+        if (target != null && rotationMode.getValue() != Mode.None && rotationMode.getValue() != Mode.Grim) {
             mc.player.setYaw(rotationYaw);
             mc.player.setPitch(rotationPitch);
+        } else {
+            rotationYaw = mc.player.getYaw();
+            rotationPitch = mc.player.getPitch();
         }
+
+        if (oldDelay.getValue().isEnabled() && minCPS.getValue() > maxCPS.getValue()) minCPS.setValue(maxCPS.getValue());
+        if (target != null && pullDown.getValue() && (mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST) || !onlyJumpBoost.getValue()))
+            mc.player.addVelocity(0f, -pullValue.getValue() / 1000f, 0f);
+    }
+
+    @EventHandler
+    public void onPacketSend(PacketEvent.@NotNull Send e) {
+        if (e.getPacket() instanceof PlayerInteractEntityC2SPacket pie && Criticals.getInteractType(pie) != Criticals.InteractType.ATTACK && target != null)
+            e.cancel();
     }
 
     @EventHandler
     public void onPacketReceive(PacketEvent.@NotNull Receive e) {
-        if (e.getPacket() instanceof PlayerPositionLookS2CPacket && tpDisable.getValue()) disable("Teleport disable");
-        if (e.getPacket() instanceof EntityStatusS2CPacket pac && pac.getStatus() == 3 && pac.getEntity(mc.world) == mc.player && deathDisable.getValue()) disable("Death disable");
+        if (e.getPacket() instanceof EntityStatusS2CPacket status)
+            if (status.getStatus() == 30 && status.getEntity(mc.world) != null && target != null && status.getEntity(mc.world) == target)
+                Managers.NOTIFICATION.publicity("Aura", isRu() ? ("Успешно сломали щит игроку " + target.getName().getString()) : ("Succesfully destroyed " + target.getName().getString() + "'s shield"), 2, Notification.Type.SUCCESS);
+
+        if (e.getPacket() instanceof PlayerPositionLookS2CPacket && tpDisable.getValue())
+            disable(isRu() ? "Отключаю из-за телепортации!" : "Disabling due to tp!");
+
+        if (e.getPacket() instanceof EntityStatusS2CPacket pac && pac.getStatus() == 3 && pac.getEntity(mc.world) == mc.player && deathDisable.getValue())
+            disable(isRu() ? "Отключаю из-за смерти!" : "Disabling due to death!");
     }
 
-    private void calcRotations(boolean ready) {
-        if (target == null) return;
-        Vec3d targetVec = target.getBoundingBox().getCenter();
-        float[] rotations = InteractionUtility.calculateRotation(targetVec);
-        
-        float yawStep = random(minYawStep.getValue(), maxYawStep.getValue());
-        rotationYaw = MathUtility.lerp(rotationYaw, rotations[0], yawStep / 100f);
-        rotationPitch = rotations[1];
-
-        lookingAtHitbox = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue());
-    }
-
-    public void onRender3D(MatrixStack stack) {
-        if (target == null) return;
-        
-        switch (esp.getValue()) {
-            case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-            case NurikZapen -> CaptureMark.render(target);
-            case Ghost -> {
-                double speed = System.currentTimeMillis() / 1000.0 * ghostSpeed.getValue();
-                double radius = ghostOrbit.getValue();
-                // FIX LỖI mc.getTickDelta()
-                float tickDelta = mc.getRenderTickCounter().getTickDelta(false);
-                Vec3d pos = target.getLerpedPos(tickDelta);
-                double x = pos.x + Math.sin(speed) * radius;
-                double z = pos.z + Math.cos(speed) * radius;
-                double y = pos.y + (Math.sin(speed * 0.5) + 1.0) * (target.getHeight() / 2.0);
-                Render3DEngine.drawFilledBox(stack, new Box(x - 0.1, y - 0.1, z - 0.1, x + 0.1, y + 0.1, z + 0.1), HudEditor.getColor(0));
-            }
-        }
-    }
-
-    public float getAttackCooldown() {
-        return MathHelper.clamp(((float) ((ILivingEntity) mc.player).getLastAttackedTicks() + attackBaseTime.getValue()) / getAttackCooldownProgressPerTick(), 0.0F, 1.0F);
-    }
-    
-    public float getAttackCooldownProgressPerTick() {
-        return (float) (1.0 / mc.player.getAttributeValue(EntityAttributes.GENERIC_ATTACK_SPEED) * (20.0 * ThunderHack.TICK_TIMER * (tpsSync.getValue() ? Managers.SERVER.getTPSFactor() : 1f)));
+    @Override
+    public void onEnable() {
+        target = null;
+        lookingAtHitbox = false;
+        rotationPoint = Vec3d.ZERO;
+        rotationMotion = Vec3d.ZERO;
+        rotationYaw = mc.player.getYaw();
+        rotationPitch = mc.player.getPitch();
+        delayTimer.reset();
+        ghostList.clear();
     }
 
     private boolean autoCrit() {
+        boolean reasonForSkipCrit = !smartCrit.getValue().isEnabled() || mc.player.getAbilities().flying || (mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) || mc.player.hasStatusEffect(StatusEffects.BLINDNESS) || mc.player.hasStatusEffect(StatusEffects.SLOW_FALLING) || Managers.PLAYER.isInWeb();
         if (hitTicks > 0) return false;
+        if (pauseInInventory.getValue() && Managers.PLAYER.inInventory) return false;
         if (getAttackCooldown() < attackCooldown.getValue() && !oldDelay.getValue().isEnabled()) return false;
-        return !mc.player.isOnGround() && mc.player.fallDistance > critFallDistance.getValue();
+        if (ModuleManager.criticals.isEnabled() && ModuleManager.criticals.mode.is(Criticals.Mode.Grim)) return true;
+        boolean mergeWithTargetStrafe = !ModuleManager.targetStrafe.isEnabled() || !ModuleManager.targetStrafe.jump.getValue();
+        boolean mergeWithSpeed = !ModuleManager.speed.isEnabled() || mc.player.isOnGround();
+        if (!mc.options.jumpKey.isPressed() && mergeWithTargetStrafe && mergeWithSpeed && !onlySpace.getValue() && !autoJump.getValue()) return true;
+        if (mc.player.isInLava() || mc.player.isSubmergedInWater()) return true;
+        if (!mc.options.jumpKey.isPressed() && isAboveWater()) return true;
+        if (mc.player.fallDistance > 1 && mc.player.fallDistance < 1.14) return false;
+        if (!reasonForSkipCrit) return !mc.player.isOnGround() && mc.player.fallDistance > (shouldRandomizeFallDistance() ? MathUtility.random(0.15f, 0.7f) : critFallDistance.getValue());
+        return true;
     }
 
     private boolean shieldBreaker(boolean instant) {
         int axeSlot = InventoryUtility.getAxe().slot();
         if (axeSlot == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
         if (!((PlayerEntity) target).isUsingItem() && !instant) return false;
-        InventoryUtility.switchTo(axeSlot);
-        mc.interactionManager.attackEntity(mc.player, target);
-        swingHand();
-        InventoryUtility.switchTo(mc.player.getInventory().selectedSlot);
+        if (((PlayerEntity) target).getOffHandStack().getItem() != Items.SHIELD && ((PlayerEntity) target).getMainHandStack().getItem() != Items.SHIELD) return false;
+
+        if (axeSlot >= 9) {
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
+            mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
+            mc.interactionManager.attackEntity(mc.player, target);
+            swingHand();
+            mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
+            mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
+        } else {
+            mc.player.networkHandler.sendPacket(new UpdateSelectedSlotC2SPacket(axeSlot));
+            mc.interactionManager.attackEntity(mc.player, target);
+            swingHand();
+            mc.player.networkHandler.sendPacket(new UpdateSelectedSlotC2SPacket(mc.player.getInventory().selectedSlot));
+        }
+        hitTicks = 10;
         return true;
     }
 
@@ -391,29 +437,226 @@ public class Aura extends Module {
         else if (attackHand.getValue() == AttackHand.OffHand) mc.player.swingHand(Hand.OFF_HAND);
     }
 
+    public boolean isAboveWater() {
+        return mc.player.isSubmergedInWater() || (mc.world != null && mc.world.getBlockState(BlockPos.ofFloored(mc.player.getPos().add(0, -0.4, 0))).getBlock() == Blocks.WATER);
+    }
+
+    public float getAttackCooldownProgressPerTick() {
+        return (float) (1.0 / mc.player.getAttributeValue(EntityAttributes.GENERIC_ATTACK_SPEED) * (20.0 * ThunderHack.TICK_TIMER * (tpsSync.getValue() ? Managers.SERVER.getTPSFactor() : 1f)));
+    }
+
+    public float getAttackCooldown() {
+        return MathHelper.clamp(((float) ((ILivingEntity) mc.player).getLastAttackedTicks() + attackBaseTime.getValue()) / getAttackCooldownProgressPerTick(), 0.0F, 1.0F);
+    }
+
     private void updateTarget() {
-        // FIX LỖI STREAM TRÊN ITERABLE
-        target = StreamSupport.stream(mc.world.getEntities().spliterator(), false)
-                .filter(e -> !skipEntity(e))
-                .min(Comparator.comparing(e -> mc.player.distanceTo(e)))
-                .orElse(null);
+        Entity candidat = findTarget();
+        if (target == null) {
+            target = candidat;
+            return;
+        }
+        if (sort.getValue() == Sort.FOV || !lockTarget.getValue()) target = candidat;
+        if (candidat instanceof ProjectileEntity) target = candidat;
+        if (skipEntity(target)) target = null;
+    }
+
+    private void calcRotations(boolean ready) {
+        if (ready) trackticks = (mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext() ? 1 : interactTicks.getValue());
+        else if (trackticks > 0) trackticks--;
+
+        if (target == null) return;
+
+        Vec3d targetVec;
+        if (mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) targetVec = target.getEyePos();
+        else targetVec = getLegitLook(target);
+
+        if (targetVec == null) return;
+
+        pitchAcceleration = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange() + aimRange.getValue(), getRange() + aimRange.getValue(), rayTrace.getValue()) ? aimedPitchStep.getValue() : pitchAcceleration < maxPitchStep.getValue() ? pitchAcceleration * pitchAccelerate.getValue() : maxPitchStep.getValue();
+        float delta_yaw = wrapDegrees((float) wrapDegrees(Math.toDegrees(Math.atan2(targetVec.z - mc.player.getZ(), (targetVec.x - mc.player.getX()))) - 90) - rotationYaw) + (wallsBypass.is(WallsBypass.V2) && !ready && !mc.player.canSee(target) ? 20 : 0);
+        float delta_pitch = ((float) (-Math.toDegrees(Math.atan2(targetVec.y - (mc.player.getPos().y + mc.player.getEyeHeight(mc.player.getPose())), Math.sqrt(Math.pow((targetVec.x - mc.player.getX()), 2) + Math.pow(targetVec.z - mc.player.getZ(), 2))))) - rotationPitch);
+        float yawStep = rotationMode.getValue() != Mode.Track ? 360f : random(minYawStep.getValue(), maxYawStep.getValue());
+        float pitchStep = rotationMode.getValue() != Mode.Track ? 180f : Managers.PLAYER.ticksElytraFlying > 5 ? 180 : (pitchAcceleration + random(-1f, 1f));
+
+        if (ready) switch (accelerateOnHit.getValue()) {
+            case Yaw -> yawStep = 180f;
+            case Pitch -> pitchStep = 90f;
+            case Both -> { yawStep = 180f; pitchStep = 90f; }
+        }
+
+        if (delta_yaw > 180) delta_yaw = delta_yaw - 180;
+        float deltaYaw = MathHelper.clamp(MathHelper.abs(delta_yaw), -yawStep, yawStep);
+        float deltaPitch = MathHelper.clamp(delta_pitch, -pitchStep, pitchStep);
+        float newYaw = rotationYaw + (delta_yaw > 0 ? deltaYaw : -deltaYaw);
+        float newPitch = MathHelper.clamp(rotationPitch + deltaPitch, -90.0F, 90.0F);
+        double gcdFix = (Math.pow(mc.options.getMouseSensitivity().getValue() * 0.6 + 0.2, 3.0)) * 1.2;
+
+        if (trackticks > 0 || rotationMode.getValue() == Mode.Track) {
+            rotationYaw = (float) (newYaw - (newYaw - rotationYaw) % gcdFix);
+            rotationPitch = (float) (newPitch - (newPitch - rotationPitch) % gcdFix);
+        } else {
+            rotationYaw = mc.player.getYaw();
+            rotationPitch = mc.player.getPitch();
+        }
+
+        if (!rotationMode.is(Mode.Grim)) ModuleManager.rotations.fixRotation = rotationYaw;
+        lookingAtHitbox = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue());
+    }
+
+    public void onRender3D(MatrixStack stack) {
+        if (!haveWeapon() || target == null) return;
+
+        // VẼ GHOST V2
+        if (esp.is(ESP.GhostV2)) {
+            for (GhostData gd : ghostList) {
+                Render3DEngine.drawGhostModel(stack, gd.entity, gd.x, gd.y, gd.z, gd.yaw, gd.pitch, ghostAlpha.getValue());
+            }
+        }
+
+        switch (esp.getValue()) {
+            case CelkaPasta -> Render3DEngine.drawOldTargetEsp(stack, target);
+            case NurikZapen -> CaptureMark.render(target);
+            case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
+            case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+        }
+
+        if (clientLook.getValue() && rotationMode.getValue() != Mode.None) {
+            mc.player.setYaw((float) Render2DEngine.interpolate(mc.player.prevYaw, rotationYaw, Render3DEngine.getTickDelta()));
+            mc.player.setPitch((float) Render2DEngine.interpolate(mc.player.prevPitch, rotationPitch, Render3DEngine.getTickDelta()));
+        }
+    }
+
+    public Vec3d getLegitLook(Entity target) {
+        float minMotionXZ = 0.003f, maxMotionXZ = 0.03f, minMotionY = 0.001f, maxMotionY = 0.03f;
+        double lx = target.getBoundingBox().getLengthX(), ly = target.getBoundingBox().getLengthY(), lz = target.getBoundingBox().getLengthZ();
+        if (rotationMotion.equals(Vec3d.ZERO)) rotationMotion = new Vec3d(random(-0.05f, 0.05f), random(-0.05f, 0.05f), random(-0.05f, 0.05f));
+        rotationPoint = rotationPoint.add(rotationMotion);
+        if (rotationPoint.x >= (lx - 0.05) / 2f) rotationMotion = new Vec3d(-random(minMotionXZ, maxMotionXZ), rotationMotion.getY(), rotationMotion.getZ());
+        if (rotationPoint.y >= ly) rotationMotion = new Vec3d(rotationMotion.getX(), -random(minMotionY, maxMotionY), rotationMotion.getZ());
+        if (rotationPoint.z >= (lz - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), -random(minMotionXZ, maxMotionXZ));
+        if (rotationPoint.x <= -(lx - 0.05) / 2f) rotationMotion = new Vec3d(random(minMotionXZ, 0.03f), rotationMotion.getY(), rotationMotion.getZ());
+        if (rotationPoint.y <= 0.05) rotationMotion = new Vec3d(rotationMotion.getX(), random(minMotionY, maxMotionY), rotationMotion.getZ());
+        if (rotationPoint.z <= -(lz - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), random(minMotionXZ, maxMotionXZ));
+        rotationPoint.add(random(-0.03f, 0.03f), 0f, random(-0.03f, 0.03f));
+        if (!mc.player.canSee(target) && wallsBypass.is(WallsBypass.V1)) return target.getPos().add(random(-0.15, 0.15), ly, random(-0.15, 0.15));
+        
+        // DVD LOGIC RE-CALC
+        if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
+            float[] r1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
+            if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0)) <= attackRange.getPow2Value() && Managers.PLAYER.checkRtx(r1[0], r1[1], getRange(), 0, rayTrace.getValue())) {
+                rotationPoint = new Vec3d(random(-0.1f, 0.1f), target.getEyeHeight(target.getPose()) / (random(1.8f, 2.5f)), random(-0.1f, 0.1f));
+            } else {
+                float hb = (float) (lx / 2f);
+                for (float x1 = -hb; x1 <= hb; x1 += 0.05f) {
+                    for (float z1 = -hb; z1 <= hb; z1 += 0.05f) {
+                        for (float y1 = 0.05f; y1 <= ly; y1 += 0.15f) {
+                            Vec3d v1 = new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1);
+                            if (PlayerUtility.squaredDistanceFromEyes(v1) > attackRange.getPow2Value()) continue;
+                            float[] rotation = Managers.PLAYER.calcAngle(v1);
+                            if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], getRange(), 0, rayTrace.getValue())) {
+                                rotationPoint = new Vec3d(x1, y1, z1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return target.getPos().add(rotationPoint);
+    }
+
+    public boolean isInRange(Entity target) {
+        if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) return false;
+        float hb = (float) (target.getBoundingBox().getLengthX() / 2f);
+        for (float x1 = -hb; x1 <= hb; x1 += 0.15f) {
+            for (float z1 = -hb; z1 <= hb; z1 += 0.15f) {
+                for (float y1 = 0.05f; y1 <= target.getBoundingBox().getLengthY(); y1 += 0.25f) {
+                    Vec3d pos = new Vec3d(target.getX() + x1, target.getY() + y1, target.getZ() + z1);
+                    if (PlayerUtility.squaredDistanceFromEyes(pos) > getSquaredRotateDistance()) continue;
+                    float[] rotation = Managers.PLAYER.calcAngle(pos);
+                    if (Managers.PLAYER.checkRtx(rotation[0], rotation[1], (float) Math.sqrt(getSquaredRotateDistance()), getWallRange(), rayTrace.getValue())) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public Entity findTarget() {
+        List<LivingEntity> first_stage = new CopyOnWriteArrayList<>();
+        for (Entity ent : mc.world.getEntities()) {
+            if ((ent instanceof ShulkerBulletEntity || ent instanceof FireballEntity) && ent.isAlive() && isInRange(ent) && Projectiles.getValue()) return ent;
+            if (skipEntity(ent) || !(ent instanceof LivingEntity)) continue;
+            first_stage.add((LivingEntity) ent);
+        }
+        return switch (sort.getValue()) {
+            case LowestDistance -> first_stage.stream().min(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
+            case HighestDistance -> first_stage.stream().max(Comparator.comparing(e -> (mc.player.squaredDistanceTo(e.getPos())))).orElse(null);
+            case FOV -> first_stage.stream().min(Comparator.comparing(this::getFOVAngle)).orElse(null);
+            case LowestHealth -> first_stage.stream().min(Comparator.comparing(e -> (e.getHealth() + e.getAbsorptionAmount()))).orElse(null);
+            case HighestHealth -> first_stage.stream().max(Comparator.comparing(e -> (e.getHealth() + e.getAbsorptionAmount()))).orElse(null);
+            case LowestDurability -> first_stage.stream().min(Comparator.comparing(this::getArmorDurability)).orElse(null);
+            case HighestDurability -> first_stage.stream().max(Comparator.comparing(this::getArmorDurability)).orElse(null);
+        };
+    }
+
+    private float getArmorDurability(LivingEntity e) {
+        float v = 0;
+        for (ItemStack armor : e.getArmorItems()) if (armor != null && !armor.getItem().equals(Items.AIR)) v += ((armor.getMaxDamage() - armor.getDamage()) / (float) armor.getMaxDamage());
+        return v;
     }
 
     private boolean skipEntity(Entity entity) {
-        if (!(entity instanceof LivingEntity ent) || ent == mc.player || !ent.isAlive()) return true;
-        if (entity instanceof PlayerEntity && Managers.FRIEND.isFriend((PlayerEntity) entity)) return true;
-        return mc.player.distanceTo(entity) > getRange() + aimRange.getValue();
+        if (isBullet(entity)) return false;
+        if (!(entity instanceof LivingEntity ent) || ent.isDead() || !entity.isAlive() || entity instanceof ArmorStandEntity || entity instanceof CatEntity || skipNotSelected(entity)) return true;
+        if (!InteractionUtility.isVecInFOV(ent.getPos(), fov.getValue())) return true;
+        if (entity instanceof PlayerEntity player) {
+            if (ModuleManager.antiBot.isEnabled() && AntiBot.bots.contains(entity)) return true;
+            if (player == mc.player || Managers.FRIEND.isFriend(player)) return true;
+            if (player.isCreative() && ignoreCreative.getValue()) return true;
+            if (player.getArmor() == 0 && ignoreNaked.getValue()) return true;
+            if (player.isInvisible() && ignoreInvisible.getValue()) return true;
+            if (player.getTeamColorValue() == mc.player.getTeamColorValue() && ignoreTeam.getValue() && mc.player.getTeamColorValue() != 16777215) return true;
+        }
+        return !isInRange(entity) || (entity.hasCustomName() && ignoreNamed.getValue());
     }
 
-    public void resolvePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity p : mc.world.getPlayers()) if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).resolve(resolver.getValue()); }
-    public void restorePlayers() { if (resolver.not(Resolver.Off)) for (PlayerEntity p : mc.world.getPlayers()) if (p instanceof OtherClientPlayerEntity) ((IOtherClientPlayerEntity) p).releaseResolver(); }
-    public void handleKill() { if (target instanceof LivingEntity le && (le.getHealth() <= 0 || le.isDead())) Managers.NOTIFICATION.publicity("Aura", "Target neutralized!", 3, Notification.Type.SUCCESS); }
+    private boolean isBullet(Entity entity) {
+        return (entity instanceof ShulkerBulletEntity || entity instanceof FireballEntity) && entity.isAlive() && PlayerUtility.squaredDistanceFromEyes(entity.getPos()) < getSquaredRotateDistance() && Projectiles.getValue();
+    }
 
-    public static class Position {
-        private double x, y, z; private int ticks;
-        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
-        public boolean shouldRemove() { return ticks++ > ModuleManager.aura.backTicks.getValue(); }
-        public double getX() { return x; } public double getY() { return y; } public double getZ() { return z; }
+    private boolean skipNotSelected(Entity entity) {
+        if (entity instanceof SlimeEntity && !Slimes.getValue()) return true;
+        if (entity instanceof HostileEntity he) { if (!hostiles.getValue()) return true; if (onlyAngry.getValue()) return !he.isAngryAt(mc.player); }
+        if (entity instanceof PlayerEntity && !Players.getValue()) return true;
+        if (entity instanceof VillagerEntity && !Villagers.getValue()) return true;
+        if (entity instanceof MobEntity && !Mobs.getValue()) return true;
+        return entity instanceof AnimalEntity && !Animals.getValue();
+    }
+
+    private float getFOVAngle(@NotNull LivingEntity e) {
+        double dx = e.getX() - mc.player.getX(), dz = e.getZ() - mc.player.getZ();
+        float yaw = (float) MathHelper.wrapDegrees(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        return Math.abs(yaw - MathHelper.wrapDegrees(mc.player.getYaw()));
+    }
+
+    public float getSquaredRotateDistance() {
+        float dst = getRange() + aimRange.getValue();
+        if ((mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) && target != null) dst += 4f;
+        if (ModuleManager.strafe.isEnabled()) dst += 4f;
+        if (rotationMode.getValue() != Mode.Track || rayTrace.getValue() == RayTrace.OFF) dst = getRange();
+        return dst * dst;
+    }
+
+    @Override
+    public void onDisable() { target = null; ghostList.clear(); }
+
+    private boolean shouldRandomizeDelay() { return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f || mc.player.isSwimming() || mc.player.isFallFlying()); }
+    private boolean shouldRandomizeFallDistance() { return randomHitDelay.getValue() && !shouldRandomizeDelay(); }
+
+    // CLASSES & ENUMS
+    private static class GhostData {
+        double x, y, z; float yaw, pitch; LivingEntity entity;
+        GhostData(double x, double y, double z, float yaw, float pitch, LivingEntity entity) { this.x = x; this.y = y; this.z = z; this.yaw = yaw; this.pitch = pitch; this.entity = entity; }
     }
 
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
@@ -422,7 +665,8 @@ public class Aura extends Module {
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
     public enum Mode { Interact, Track, Grim, None }
     public enum AttackHand { MainHand, OffHand, None }
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, Ghost, ThunderHackV2 }
+    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, GhostV2 }
+    public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
     public enum WallsBypass { Off, V1, V2 }
     public enum SprintMode { Legit, HvH, SMP }
 }
