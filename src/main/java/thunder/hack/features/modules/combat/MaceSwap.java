@@ -27,8 +27,8 @@ public class MaceSwap extends Module {
         if (mc.player == null) return;
 
         if (mc.player.fallDistance > 0.5f) {
-            // FIX TẠI ĐÂY: Thay .getSlot() thành .slot
-            int maceSlot = InventoryUtility.findItemInHotBar(Items.MACE).slot;
+            // SỬA TẠI ĐÂY: Dùng getSlotId() thay vì .slot
+            int maceSlot = InventoryUtility.findItemInHotBar(Items.MACE).getSlotId();
             
             if (maceSlot != -1) {
                 if (oldSlot == -1) oldSlot = mc.player.getInventory().selectedSlot;
