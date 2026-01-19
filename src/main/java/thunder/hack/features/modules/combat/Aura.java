@@ -65,7 +65,7 @@ import static thunder.hack.features.modules.client.ClientSettings.isRu;
 import static thunder.hack.utility.math.MathUtility.random;
 
 public class Aura extends Module {
-    /* SETTINGS - GIỮ NGUYÊN VÀ THÊM MỚI */
+    /* --- SETTINGS --- */
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -73,7 +73,6 @@ public class Aura extends Module {
     public final Setting<Float> elytraWallRange = new Setting<>("ElytraThroughWallsRange", 3.1f, 0f, 6.0f, v -> elytra.getValue());
     public final Setting<WallsBypass> wallsBypass = new Setting<>("WallsBypass", WallsBypass.Off, v -> getWallRange() > 0);
     
-    // Thêm Sprint
     public final Setting<SprintMode> sprint = new Setting<>("Sprint", SprintMode.Legit);
 
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
@@ -93,21 +92,20 @@ public class Aura extends Module {
     public final Setting<Integer> minCPS = new Setting<>("MinCPS", 7, 1, 20).addToGroup(oldDelay);
     public final Setting<Integer> maxCPS = new Setting<>("MaxCPS", 12, 1, 20).addToGroup(oldDelay);
 
-    // ESP - GIỮ THUNDERV2 VÀ THÊM GHOSTV2
+    /* --- ESP SECTION (THUNDERV2 + GHOSTV2) --- */
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack);
-    public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2));
+    public final Setting<SettingGroup> espGroup = new Setting<>("GhostSettings", new SettingGroup(false, 0), v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2));
     public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2)).addToGroup(espGroup);
     public final Setting<Integer> espFactor = new Setting<>("ESPFactor", 8, 1, 20, v -> esp.is(ESP.ThunderHackV2) || esp.is(ESP.GhostV2)).addToGroup(espGroup);
     public final Setting<Float> espShaking = new Setting<>("ESPShaking", 1.8f, 1.5f, 10f, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
     public final Setting<Float> espAmplitude = new Setting<>("ESPAmplitude", 3f, 0.1f, 8f, v -> esp.is(ESP.ThunderHackV2)).addToGroup(espGroup);
-    // Setting riêng cho GhostV2
     public final Setting<Float> ghostAlpha = new Setting<>("GhostAlpha", 0.6f, 0.1f, 1f, v -> esp.is(ESP.GhostV2)).addToGroup(espGroup);
 
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
 
-    /* ADVANCED */
+    /* --- ADVANCED --- */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -137,7 +135,7 @@ public class Aura extends Module {
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
-    /* TARGETS */
+    /* --- TARGETS --- */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -154,7 +152,7 @@ public class Aura extends Module {
     public final Setting<Boolean> ignoreNaked = new Setting<>("IgnoreNaked", false).addToGroup(targets);
     public final Setting<Boolean> ignoreShield = new Setting<>("AttackShieldingEntities", true).addToGroup(targets);
 
-    // VARIABLES
+    // LOGIC FIELDS
     public static Entity target;
     public float rotationYaw;
     public float rotationPitch;
@@ -168,7 +166,7 @@ public class Aura extends Module {
     private final Timer pauseTimer = new Timer();
     public Box resolvedBox;
     static boolean wasTargeted = false;
-    
+
     // GhostV2 Cache
     private final List<GhostData> ghostList = new ArrayList<>();
 
@@ -189,10 +187,8 @@ public class Aura extends Module {
             target = null;
             return;
         }
-
         handleKill();
         updateTarget();
-
         if (target == null) return;
 
         if (!mc.options.jumpKey.isPressed() && mc.player.isOnGround() && autoJump.getValue())
@@ -236,13 +232,10 @@ public class Aura extends Module {
         Criticals.cancelCrit = true;
         ModuleManager.criticals.doCrit();
         int prevSlot = switchMethod();
-
-        // Sprint Mode HvH
         if (sprint.getValue() == SprintMode.HvH && mc.player.isSprinting()) {
             mc.player.setSprinting(false);
             mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
         }
-
         mc.interactionManager.attackEntity(mc.player, target);
         Criticals.cancelCrit = false;
         swingHand();
@@ -254,13 +247,10 @@ public class Aura extends Module {
         boolean blocking = mc.player.isUsingItem() && mc.player.getActiveItem().getItem().getUseAction(mc.player.getActiveItem()) == BLOCK;
         if (blocking && unpressShield.getValue())
             mc.player.networkHandler.sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, Direction.DOWN));
-
         boolean sprintActive = Core.serverSprint;
         if (sprintActive && dropSprint.getValue()) disableSprint();
-
         if (rotationMode.is(Mode.Grim))
             mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.Full(mc.player.getX(), mc.player.getY(), mc.player.getZ(), rotationYaw, rotationPitch, mc.player.isOnGround()));
-
         return new boolean[]{blocking, sprintActive};
     }
 
@@ -338,7 +328,6 @@ public class Aura extends Module {
         restorePlayers();
         hitTicks--;
 
-        // Cập nhật logic GhostV2
         if (target != null && esp.is(ESP.GhostV2)) {
             ghostList.add(new GhostData(target.getX(), target.getY(), target.getZ(), target.getYaw(), target.getPitch(), (LivingEntity) target));
         }
@@ -348,7 +337,6 @@ public class Aura extends Module {
     @EventHandler
     public void onSync(EventSync e) {
         if (!pauseTimer.passedMs(1000) || (mc.player.isUsingItem() && pauseWhileEating.getValue()) || !haveWeapon()) return;
-
         if (target != null && rotationMode.getValue() != Mode.None && rotationMode.getValue() != Mode.Grim) {
             mc.player.setYaw(rotationYaw);
             mc.player.setPitch(rotationPitch);
@@ -356,7 +344,6 @@ public class Aura extends Module {
             rotationYaw = mc.player.getYaw();
             rotationPitch = mc.player.getPitch();
         }
-
         if (oldDelay.getValue().isEnabled() && minCPS.getValue() > maxCPS.getValue()) minCPS.setValue(maxCPS.getValue());
         if (target != null && pullDown.getValue() && (mc.player.hasStatusEffect(StatusEffects.JUMP_BOOST) || !onlyJumpBoost.getValue()))
             mc.player.addVelocity(0f, -pullValue.getValue() / 1000f, 0f);
@@ -373,10 +360,8 @@ public class Aura extends Module {
         if (e.getPacket() instanceof EntityStatusS2CPacket status)
             if (status.getStatus() == 30 && status.getEntity(mc.world) != null && target != null && status.getEntity(mc.world) == target)
                 Managers.NOTIFICATION.publicity("Aura", isRu() ? ("Успешно сломали щит игроку " + target.getName().getString()) : ("Succesfully destroyed " + target.getName().getString() + "'s shield"), 2, Notification.Type.SUCCESS);
-
         if (e.getPacket() instanceof PlayerPositionLookS2CPacket && tpDisable.getValue())
             disable(isRu() ? "Отключаю из-за телепортации!" : "Disabling due to tp!");
-
         if (e.getPacket() instanceof EntityStatusS2CPacket pac && pac.getStatus() == 3 && pac.getEntity(mc.world) == mc.player && deathDisable.getValue())
             disable(isRu() ? "Отключаю из-за смерти!" : "Disabling due to death!");
     }
@@ -414,14 +399,13 @@ public class Aura extends Module {
         if (axeSlot == -1 || !shieldBreaker.getValue() || !(target instanceof PlayerEntity)) return false;
         if (!((PlayerEntity) target).isUsingItem() && !instant) return false;
         if (((PlayerEntity) target).getOffHandStack().getItem() != Items.SHIELD && ((PlayerEntity) target).getMainHandStack().getItem() != Items.SHIELD) return false;
-
         if (axeSlot >= 9) {
             mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
             mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
             mc.interactionManager.attackEntity(mc.player, target);
             swingHand();
             mc.interactionManager.clickSlot(mc.player.currentScreenHandler.syncId, axeSlot, mc.player.getInventory().selectedSlot, SlotActionType.SWAP, mc.player);
-            mc.player.networkHandler.sendPacket(new CloseHandledScreenC2SPacket(mc.player.currentScreenHandler.syncId));
+            mc.player.networkHandler.sendPacket(new CloseHandledScreenC2ScreenC2SPacket(mc.player.currentScreenHandler.syncId));
         } else {
             mc.player.networkHandler.sendPacket(new UpdateSelectedSlotC2SPacket(axeSlot));
             mc.interactionManager.attackEntity(mc.player, target);
@@ -463,34 +447,27 @@ public class Aura extends Module {
     private void calcRotations(boolean ready) {
         if (ready) trackticks = (mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.25, 0.0, -0.25).offset(0.0, 1, 0.0)).iterator().hasNext() ? 1 : interactTicks.getValue());
         else if (trackticks > 0) trackticks--;
-
         if (target == null) return;
-
         Vec3d targetVec;
         if (mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) targetVec = target.getEyePos();
         else targetVec = getLegitLook(target);
-
         if (targetVec == null) return;
-
         pitchAcceleration = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange() + aimRange.getValue(), getRange() + aimRange.getValue(), rayTrace.getValue()) ? aimedPitchStep.getValue() : pitchAcceleration < maxPitchStep.getValue() ? pitchAcceleration * pitchAccelerate.getValue() : maxPitchStep.getValue();
         float delta_yaw = wrapDegrees((float) wrapDegrees(Math.toDegrees(Math.atan2(targetVec.z - mc.player.getZ(), (targetVec.x - mc.player.getX()))) - 90) - rotationYaw) + (wallsBypass.is(WallsBypass.V2) && !ready && !mc.player.canSee(target) ? 20 : 0);
         float delta_pitch = ((float) (-Math.toDegrees(Math.atan2(targetVec.y - (mc.player.getPos().y + mc.player.getEyeHeight(mc.player.getPose())), Math.sqrt(Math.pow((targetVec.x - mc.player.getX()), 2) + Math.pow(targetVec.z - mc.player.getZ(), 2))))) - rotationPitch);
         float yawStep = rotationMode.getValue() != Mode.Track ? 360f : random(minYawStep.getValue(), maxYawStep.getValue());
         float pitchStep = rotationMode.getValue() != Mode.Track ? 180f : Managers.PLAYER.ticksElytraFlying > 5 ? 180 : (pitchAcceleration + random(-1f, 1f));
-
         if (ready) switch (accelerateOnHit.getValue()) {
             case Yaw -> yawStep = 180f;
             case Pitch -> pitchStep = 90f;
             case Both -> { yawStep = 180f; pitchStep = 90f; }
         }
-
         if (delta_yaw > 180) delta_yaw = delta_yaw - 180;
         float deltaYaw = MathHelper.clamp(MathHelper.abs(delta_yaw), -yawStep, yawStep);
         float deltaPitch = MathHelper.clamp(delta_pitch, -pitchStep, pitchStep);
         float newYaw = rotationYaw + (delta_yaw > 0 ? deltaYaw : -deltaYaw);
         float newPitch = MathHelper.clamp(rotationPitch + deltaPitch, -90.0F, 90.0F);
         double gcdFix = (Math.pow(mc.options.getMouseSensitivity().getValue() * 0.6 + 0.2, 3.0)) * 1.2;
-
         if (trackticks > 0 || rotationMode.getValue() == Mode.Track) {
             rotationYaw = (float) (newYaw - (newYaw - rotationYaw) % gcdFix);
             rotationPitch = (float) (newPitch - (newPitch - rotationPitch) % gcdFix);
@@ -498,28 +475,23 @@ public class Aura extends Module {
             rotationYaw = mc.player.getYaw();
             rotationPitch = mc.player.getPitch();
         }
-
         if (!rotationMode.is(Mode.Grim)) ModuleManager.rotations.fixRotation = rotationYaw;
         lookingAtHitbox = Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue());
     }
 
     public void onRender3D(MatrixStack stack) {
         if (!haveWeapon() || target == null) return;
-
-        // VẼ GHOST V2
         if (esp.is(ESP.GhostV2)) {
             for (GhostData gd : ghostList) {
                 Render3DEngine.drawGhostModel(stack, gd.entity, gd.x, gd.y, gd.z, gd.yaw, gd.pitch, ghostAlpha.getValue());
             }
         }
-
         switch (esp.getValue()) {
             case CelkaPasta -> Render3DEngine.drawOldTargetEsp(stack, target);
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
         }
-
         if (clientLook.getValue() && rotationMode.getValue() != Mode.None) {
             mc.player.setYaw((float) Render2DEngine.interpolate(mc.player.prevYaw, rotationYaw, Render3DEngine.getTickDelta()));
             mc.player.setPitch((float) Render2DEngine.interpolate(mc.player.prevPitch, rotationPitch, Render3DEngine.getTickDelta()));
@@ -539,8 +511,6 @@ public class Aura extends Module {
         if (rotationPoint.z <= -(lz - 0.05) / 2f) rotationMotion = new Vec3d(rotationMotion.getX(), rotationMotion.getY(), random(minMotionXZ, maxMotionXZ));
         rotationPoint.add(random(-0.03f, 0.03f), 0f, random(-0.03f, 0.03f));
         if (!mc.player.canSee(target) && wallsBypass.is(WallsBypass.V1)) return target.getPos().add(random(-0.15, 0.15), ly, random(-0.15, 0.15));
-        
-        // DVD LOGIC RE-CALC
         if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
             float[] r1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
             if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0)) <= attackRange.getPow2Value() && Managers.PLAYER.checkRtx(r1[0], r1[1], getRange(), 0, rayTrace.getValue())) {
@@ -653,7 +623,27 @@ public class Aura extends Module {
     private boolean shouldRandomizeDelay() { return randomHitDelay.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f || mc.player.isSwimming() || mc.player.isFallFlying()); }
     private boolean shouldRandomizeFallDistance() { return randomHitDelay.getValue() && !shouldRandomizeDelay(); }
 
-    // CLASSES & ENUMS
+    /* --- CÁC CLASS QUAN TRỌNG ĐỂ KHÔNG BỊ LỖI BUILD --- */
+    public static class Position {
+        private final double x, y, z;
+        private int ticks;
+
+        public Position(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.ticks = 0;
+        }
+
+        public boolean shouldRemove() {
+            return ticks++ > ModuleManager.aura.backTicks.getValue();
+        }
+
+        public double getX() { return x; }
+        public double getY() { return y; }
+        public double getZ() { return z; }
+    }
+
     private static class GhostData {
         double x, y, z; float yaw, pitch; LivingEntity entity;
         GhostData(double x, double y, double z, float yaw, float pitch, LivingEntity entity) { this.x = x; this.y = y; this.z = z; this.yaw = yaw; this.pitch = pitch; this.entity = entity; }
