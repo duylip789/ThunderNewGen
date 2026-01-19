@@ -1,4 +1,4 @@
-name: Build-Bounce-1.21-Final
+name: Build-Bounce-Final
 on: [workflow_dispatch, push]
 
 jobs:
@@ -18,11 +18,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        # Lenh nay se tu dong build ra file jar cho ban
         run: ./gradlew build -x test --no-daemon
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Bounce-Client-1.21
+          name: Bounce-1.21-Jar
           path: build/libs/*.jar
