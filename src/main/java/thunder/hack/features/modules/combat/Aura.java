@@ -97,7 +97,7 @@ public class Aura extends Module {
     public final Setting<Boolean> lockTarget = new Setting<>("LockTarget", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true);
 
-    /* ADVANCED SETTINGS */
+    /* ADVANCED */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
@@ -114,7 +114,7 @@ public class Aura extends Module {
     public final Setting<Float> pullValue = new Setting<>("PullValue", 3f, 0f, 20f, v -> pullDown.getValue()).addToGroup(advanced);
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(advanced);
     public final Setting<Resolver> resolver = new Setting<>("Resolver", Resolver.Advantage).addToGroup(advanced);
-    public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20, v -> resolver.is(Resolver.BackTrack)).addToGroup(advanced);
+    public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20, v -> resolver.is(Resolver.Predictive)).addToGroup(advanced);
     public final Setting<Boolean> resolverVisualisation = new Setting<>("ResolverVisualisation", false, v -> !resolver.is(Resolver.Off)).addToGroup(advanced);
     public final Setting<AccelerateOnHit> accelerateOnHit = new Setting<>("AccelerateOnHit", AccelerateOnHit.Off).addToGroup(advanced);
     public final Setting<Integer> minYawStep = new Setting<>("MinYawStep", 65, 1, 180).addToGroup(advanced);
@@ -127,7 +127,7 @@ public class Aura extends Module {
     public final Setting<Integer> attackTickLimit = new Setting<>("AttackTickLimit", 11, 0, 20).addToGroup(advanced);
     public final Setting<Float> critFallDistance = new Setting<>("CritFallDistance", 0f, 0f, 1f).addToGroup(advanced);
 
-    /* TARGETS SETTINGS */
+    /* TARGETS */
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targets);
@@ -145,12 +145,20 @@ public class Aura extends Module {
     public final Setting<Boolean> ignoreShield = new Setting<>("AttackShieldingEntities", true).addToGroup(targets);
 
     public static Entity target;
-    public float rotationYaw, rotationPitch;
+    public float rotationYaw;
+    public float rotationPitch;
     public float pitchAcceleration = 1f;
-    private Vec3d rotationPoint = Vec3d.ZERO, rotationMotion = Vec3d.ZERO;
-    private int hitTicks, trackticks;
+
+    private Vec3d rotationPoint = Vec3d.ZERO;
+    private Vec3d rotationMotion = Vec3d.ZERO;
+
+    private int hitTicks;
+    private int trackticks;
     private boolean lookingAtHitbox;
-    private final Timer delayTimer = new Timer(), pauseTimer = new Timer();
+
+    private final Timer delayTimer = new Timer();
+    private final Timer pauseTimer = new Timer();
+
     public Box resolvedBox;
     static boolean wasTargeted = false;
 
@@ -350,14 +358,12 @@ public class Aura extends Module {
 
     public void onRender3D(MatrixStack stack) {
         if (!haveWeapon() || target == null) { trailParticles.clear(); return; }
-        if ((resolver.is(Resolver.BackTrack) || resolverVisualisation.getValue()) && resolvedBox != null) Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(resolvedBox, HudEditor.getColor(0), 1));
+        if ((resolver.is(Resolver.Predictive) || resolverVisualisation.getValue()) && resolvedBox != null) Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(resolvedBox, HudEditor.getColor(0), 1));
         switch (esp.getValue()) {
             case CelkaPasta -> Render3DEngine.drawOldTargetEsp(stack, target);
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-            
-            // --- NEWGEN ESP: TAPERED & GLOWING TRAILS ---
             case NewGen -> {
                 int count = 3; 
                 if (trailParticles.isEmpty()) for (int i = 0; i < count; i++) trailParticles.add(new TrailParticle(i * (Math.PI * 2 / count), 0, 0.05 + (i * 0.01)));
@@ -367,14 +373,11 @@ public class Aura extends Module {
                     p.yOffset = Math.sin(time + p.theta) * 0.75 + 1.0; 
                     Vec3d pos = target.getPos().add(Math.cos(p.theta) * 0.7, p.yOffset, Math.sin(p.theta) * 0.7);
                     p.history.add(pos); if (p.history.size() > 18) p.history.remove(0); 
-
                     for (int i = 1; i < p.history.size(); i++) {
-                        // Vẽ dải sáng vuốt đuôi với màu từ HudEditor
                         Render3DEngine.drawLine(p.history.get(i - 1), p.history.get(i), HudEditor.getColor(i * 5));
-                        
-                        // Tạo điểm sáng rực rỡ (Glow) ở ngay đầu tia
                         if (i == p.history.size() - 1) {
-                            Render3DEngine.drawSphere(stack, p.history.get(i), 0.12f, HudEditor.getColor(200));
+                            Vec3d h = p.history.get(i);
+                            Render3DEngine.drawSphere(stack, (float)h.x, (float)h.y, (float)h.z, 0.12f, 10, 10, HudEditor.getColor(200).getRGB());
                         }
                     }
                 }
@@ -432,7 +435,7 @@ public class Aura extends Module {
 
     private boolean skipEntity(Entity entity) {
         if (isBullet(entity)) return false; if (!(entity instanceof LivingEntity ent) || ent.isDead() || !entity.isAlive() || entity instanceof ArmorStandEntity || entity instanceof CatEntity || skipNotSelected(entity) || !InteractionUtility.isVecInFOV(ent.getPos(), fov.getValue())) return true;
-        if (entity instanceof PlayerEntity p) { if (ModuleManager.antiBot.isEnabled() && AntiBot.bots.contains(entity)) return true; if (p == mc.player || Managers.FRIEND.isFriend(p) || (p.isCreative() && ignoreCreative.getValue()) || (p.getArmor() == 0 && ignoreNaked.getValue()) || (p.isInvisible() && ignoreInvisible.getValue()) || (p.getTeamColorValue() == mc.player.getTeamColorValue() && ignoreTeam.getValue() && mc.player.getTeamColorValue() != 16777215)) return true; }
+        if (entity instanceof PlayerEntity p) { if (p == mc.player || Managers.FRIEND.isFriend(p) || (p.isCreative() && ignoreCreative.getValue()) || (p.getArmor() == 0 && ignoreNaked.getValue()) || (p.isInvisible() && ignoreInvisible.getValue()) || (p.getTeamColorValue() == mc.player.getTeamColorValue() && ignoreTeam.getValue() && mc.player.getTeamColorValue() != 16777215)) return true; }
         return !isInRange(entity) || (entity.hasCustomName() && ignoreNamed.getValue());
     }
 
@@ -453,7 +456,7 @@ public class Aura extends Module {
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Sort { LowestDistance, HighestDistance, LowestHealth, HighestHealth, LowestDurability, HighestDurability, FOV }
     public enum Switch { Normal, None, Silent }
-    public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    public enum Resolver { Off, Advantage, Predictive }
     public enum Mode { Interact, Track, Grim, None }
     public enum AttackHand { MainHand, OffHand, None }
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, NewGen }
