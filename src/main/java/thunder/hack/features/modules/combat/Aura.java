@@ -98,8 +98,8 @@ public class Aura extends Module {
             switch (esp.getValue()) {
                 case Liquid -> renderKQQSlash(stack, living);
                 case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-                // FIX: Ép kiểu float về int cho tham số thứ 2
-                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, (int) 0.5f, false, 1, target);
+                // FIX: Sửa lại tham số renderGhosts để khớp với kiểu dữ liệu float/int/boolean
+                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, 1.0f, false, target);
                 case NurikZapen -> CaptureMark.render(target);
             }
         }
