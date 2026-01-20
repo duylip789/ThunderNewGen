@@ -26,8 +26,6 @@ import thunder.hack.gui.hud.HudEditorGui;
 import thunder.hack.features.hud.HudElement;
 import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.features.modules.combat.Aura;
-import thunder.hack.features.modules.combat.AutoAnchor;
-import thunder.hack.features.modules.combat.AutoCrystal;
 import thunder.hack.features.modules.misc.NameProtect;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.ColorSetting;
@@ -133,12 +131,6 @@ public class TargetHud extends HudElement {
     }
 
     private void getTarget() {
-        if (AutoCrystal.target != null) {
-            target = AutoCrystal.target;
-            direction = true;
-            if (AutoCrystal.target.isDead()) {
-                AutoCrystal.target = null;
-                target = null;
             }
         } else if (Aura.target != null) {
             if (Aura.target instanceof LivingEntity) {
@@ -148,12 +140,7 @@ public class TargetHud extends HudElement {
                 target = null;
                 direction = false;
             }
-        } else if (AutoAnchor.target != null) {
-            target = AutoAnchor.target;
-            direction = true;
-            if (AutoAnchor.target.isDead()) {
-                AutoAnchor.target = null;
-                target = null;
+          
             }
         } else if (mc.currentScreen instanceof ChatScreen || mc.currentScreen instanceof HudEditorGui) {
             target = mc.player;
