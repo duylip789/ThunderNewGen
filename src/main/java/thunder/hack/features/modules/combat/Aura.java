@@ -98,8 +98,8 @@ public class Aura extends Module {
             switch (esp.getValue()) {
                 case Liquid -> renderKQQSlash(stack, living);
                 case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-                // FIX: Ép kiểu float sang int cho số lượng ghost
-                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, false, 1, target);
+                // FIX: Ép kiểu float về int cho tham số thứ 2
+                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, (int) 0.5f, false, 1, target);
                 case NurikZapen -> CaptureMark.render(target);
             }
         }
@@ -127,13 +127,11 @@ public class Aura extends Module {
         stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(tilt));
         Matrix4f matrix = stack.peek().getPositionMatrix();
         
-        // FIX LỖI BUILD: Cú pháp Render mới cho 1.20.x/1.21
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableCull();
 
         Tessellator tessellator = Tessellator.getInstance();
-        // Minecraft 1.20.x+ sử dụng drawContext hoặc trực tiếp gọi từ BufferBuilder
         BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
         
         for (int i = 0; i <= 160; i += 10) {
@@ -142,7 +140,6 @@ public class Aura extends Module {
             float sin = (float) Math.sin(angle) * radius;
             int alpha = (int) (color.getAlpha() * (1.0f - (i / 160.0f)));
             
-            // Cú pháp mới: vertex(matrix, x, y, z).color(r, g, b, a)
             buffer.vertex(matrix, cos, -0.1f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
             buffer.vertex(matrix, cos, 0.7f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0);
         }
