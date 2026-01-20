@@ -6,172 +6,211 @@ import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
+import org.joml.RotationAxis;
 import thunder.hack.core.Managers;
-import thunder.hack.core.manager.client.ModuleManager;
-import thunder.hack.events.impl.EventSync;
 import thunder.hack.events.impl.PlayerUpdateEvent;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.ColorSetting;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
-import thunder.hack.utility.render.Render3DEngine;
-import thunder.hack.utility.render.animation.CaptureMark;
+import thunder.hack.utility.math.MathUtility;
 
-import java.awt.Color;
+import java.awt.*;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
-    public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
-    public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
-    public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f);
-    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", false);
+    // --- COMBAT SETTINGS ---
+    public final Setting<Float> range = new Setting<>("Range", 3.5f, 1f, 6f);
+    public final Setting<Boolean> autoCrit = new Setting<>("StrictCrit", true);
+    public final Setting<Boolean> rotate = new Setting<>("Rotate", true);
+    public final Setting<Float> wallRange = new Setting<>("WallRange", 3.0f, 1f, 6f);
 
-    public final Setting<SettingGroup> visualGroup = new Setting<>("Visuals", new SettingGroup(false, 0));
-    public final Setting<ESP> esp = new Setting<>("ESP Mode", ESP.Liquid).addToGroup(visualGroup);
-    public final Setting<ColorSetting> slashColor = new Setting<>("Color", new ColorSetting(new Color(180, 150, 255, 200).getRGB())).addToGroup(visualGroup);
-    public final Setting<Float> slashSize = new Setting<>("Size", 1.3f, 0.5f, 2.5f).addToGroup(visualGroup);
-    public final Setting<Float> slashSpeed = new Setting<>("Speed", 1.5f, 0.1f, 5.0f).addToGroup(visualGroup);
+    // --- VISUAL SETTINGS (MENU ESP) ---
+    // Khai báo kiểu này để chắc chắn hiện Menu trong ClickGUI của bạn
+    public final Setting<SettingGroup> sgVisual = new Setting<>("Visuals", new SettingGroup(true, 0));
 
+    public final Setting<Boolean> renderGhost = new Setting<>("RenderGhost", true).addToGroup(sgVisual);
+    public final Setting<ColorSetting> ghostColor = new Setting<>("Color", new ColorSetting(new Color(160, 100, 255, 200).getRGB())).addToGroup(sgVisual);
+    public final Setting<Float> ghostSpeed = new Setting<>("FadeSpeed", 1.0f, 0.1f, 3.0f).addToGroup(sgVisual);
+    public final Setting<Float> slashLength = new Setting<>("SlashLength", 3.5f, 1.0f, 6.0f).addToGroup(sgVisual);
+    public final Setting<Float> slashWidth = new Setting<>("SlashWidth", 0.6f, 0.1f, 2.0f).addToGroup(sgVisual);
+    public final Setting<Boolean> seeThrough = new Setting<>("ThroughWalls", true).addToGroup(sgVisual);
+
+    // --- VARIABLES ---
     public static Entity target;
-    public float rotationYaw, rotationPitch;
-    public Box resolvedBox;
-    private float slashAnim;
-    private int hitTicks;
-    private final Timer pauseTimer = new Timer();
+    private final List<GhostSlash> slashes = new CopyOnWriteArrayList<>();
+    private final Random random = new Random();
 
-    public Aura() { super("Aura", Category.COMBAT); }
-
-    public void pause() { pauseTimer.reset(); }
-    
-    public float getAttackCooldown() {
-        return mc.player.getAttackCooldownProgress(0.5f);
+    public Aura() {
+        super("Aura", Category.COMBAT);
     }
 
-    public boolean isAboveWater() {
-        return mc.world.getBlockState(mc.player.getBlockPos().down()).isLiquid();
+    @Override
+    public void onEnable() {
+        target = null;
+        slashes.clear();
     }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
-        updateTarget();
-        if (target == null || !pauseTimer.passedMs(500)) return;
+        // 1. Tìm mục tiêu
+        target = findTarget();
+        if (target == null) return;
 
-        if (getAttackCooldown() >= attackCooldown.getValue()) {
-            if (hitTicks <= 0) {
-                attack();
-                hitTicks = 10;
+        // 2. Quay đầu
+        if (rotate.getValue()) {
+            float[] rotations = calculateAngle(target.getEyePos());
+            mc.player.setYaw(rotations[0]);
+            mc.player.setPitch(rotations[1]);
+        }
+
+        // 3. Logic Tấn công (Crit & Timing)
+        if (shouldAttack()) {
+            attackTarget();
+        }
+    }
+
+    // --- LOGIC COMBAT ---
+    private Entity findTarget() {
+        List<LivingEntity> potentialTargets = new ArrayList<>();
+        for (Entity ent : mc.world.getEntities()) {
+            if (ent instanceof LivingEntity living && ent != mc.player && living.isAlive()) {
+                if (ent instanceof PlayerEntity && Managers.FRIEND.isFriend((PlayerEntity) ent)) continue;
+                
+                float dist = mc.player.distanceTo(ent);
+                if (dist <= range.getValue()) {
+                    if (!mc.player.canSee(ent) && dist > wallRange.getValue()) continue;
+                    potentialTargets.add(living);
+                }
             }
         }
-        hitTicks--;
+        potentialTargets.sort(Comparator.comparingDouble(LivingEntity::getHealth));
+        return potentialTargets.isEmpty() ? null : potentialTargets.get(0);
     }
 
-    public void attack() {
-        if (target == null) return;
-        Criticals.cancelCrit = true;
-        ModuleManager.criticals.doCrit();
+    private boolean shouldAttack() {
+        if (mc.player.getAttackCooldownProgress(0.5f) < 0.92f) return false;
+        if (autoCrit.getValue()) {
+            boolean isFalling = mc.player.fallDistance > 0;
+            boolean inLiquid = mc.player.isTouchingWater() || mc.player.isInLava();
+            boolean onGround = mc.player.isOnGround();
+            if (inLiquid || mc.player.isClimbing()) return true;
+            return isFalling && !onGround;
+        }
+        return true;
+    }
+
+    private void attackTarget() {
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
-        Criticals.cancelCrit = false;
+        
+        // Kích hoạt hiệu ứng Ghost Slash
+        if (renderGhost.getValue()) {
+            addGhostSlash(target);
+        }
     }
 
-    @EventHandler
-    public void onSync(EventSync e) {
-        if (target != null && rotationMode.getValue() != Mode.None) {
-            float[] angles = Managers.PLAYER.calcAngle(target.getEyePos());
-            rotationYaw = angles[0];
-            rotationPitch = angles[1];
-            mc.player.setYaw(rotationYaw);
-            mc.player.setPitch(rotationPitch);
-        }
+    // --- RENDER GHOST SLASH (VISUALS) ---
+    private void addGhostSlash(Entity target) {
+        float[] pitches = {0f, 35f, -35f, 15f, -15f}; // Các góc chém đa dạng
+        float pitch = pitches[random.nextInt(pitches.length)];
+        float yaw = random.nextFloat() * 360f;
+        Vec3d pos = target.getPos().add(0, target.getHeight() * 0.6, 0);
+        slashes.add(new GhostSlash(pos, yaw, pitch));
     }
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        if (target instanceof LivingEntity living) {
-            switch (esp.getValue()) {
-                case Liquid -> renderKQQSlash(stack, living);
-                case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-                // GIẢI PHÁP AN TOÀN: Sử dụng ESP mặc định cho bản V2 để chắc chắn Build thành công
-                case ThunderHackV2 -> Render3DEngine.drawTargetEsp(stack, target);
-                case NurikZapen -> CaptureMark.render(target);
-            }
-        }
-    }
+        if (slashes.isEmpty()) return;
 
-    private void renderKQQSlash(MatrixStack stack, LivingEntity entity) {
-        slashAnim += slashSpeed.getValue() * 15f;
-        double x = entity.prevX + (entity.getX() - entity.prevX) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getX();
-        double y = entity.prevY + (entity.getY() - entity.prevY) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getY() + entity.getHeight() / 2;
-        double z = entity.prevZ + (entity.getZ() - entity.prevZ) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getZ();
-
-        Color color = new Color(slashColor.getValue().getColor());
-        stack.push();
-        stack.translate(x, y, z);
-        stack.scale(1.0f, 0.15f, 1.0f); // Hiệu ứng mỏng dẹt KQQ
-
-        drawArc(stack, slashAnim, slashSize.getValue(), color, 45f);
-        drawArc(stack, -slashAnim * 0.8f, slashSize.getValue() * 0.9f, color, -45f);
-        stack.pop();
-    }
-
-    private void drawArc(MatrixStack stack, float rotation, float radius, Color color, float tilt) {
-        stack.push();
-        stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rotation));
-        stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(tilt));
-        Matrix4f matrix = stack.peek().getPositionMatrix();
-        
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
-        RenderSystem.disableCull();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        
+        if (seeThrough.getValue()) {
+            RenderSystem.disableDepthTest();
+            RenderSystem.depthMask(false);
+        }
 
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
-        
-        for (int i = 0; i <= 160; i += 10) {
-            float angle = (float) Math.toRadians(i);
-            float cos = (float) Math.cos(angle) * radius;
-            float sin = (float) Math.sin(angle) * radius;
-            int alpha = (int) (color.getAlpha() * (1.0f - (i / 160.0f)));
+        BufferBuilder buffer = tessellator.getBuffer();
+
+        // Dùng vòng lặp ngược để tránh lỗi khi đang xóa
+        for (int i = slashes.size() - 1; i >= 0; i--) {
+            GhostSlash s = slashes.get(i);
+            s.age += 0.03f * ghostSpeed.getValue(); // Tốc độ mờ
             
-            buffer.vertex(matrix, cos, -0.1f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
-            buffer.vertex(matrix, cos, 0.7f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0);
+            if (s.age >= 1.0f) {
+                slashes.remove(i);
+                continue;
+            }
+
+            stack.push();
+            Vec3d cam = mc.getEntityRenderDispatcher().camera.getPos();
+            stack.translate(s.pos.x - cam.x, s.pos.y - cam.y, s.pos.z - cam.z);
+            stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(s.yaw));
+            stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(s.pitch));
+
+            Matrix4f mat = stack.peek().getPositionMatrix();
+            buffer.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+
+            Color c = ghostColor.getValue().getColorObject();
+            float baseAlpha = (c.getAlpha() / 255f) * (1.0f - s.age);
+            float len = slashLength.getValue();
+            float wid = slashWidth.getValue();
+
+            int steps = 20; 
+            for (int j = 0; j <= steps; j++) {
+                float t = (float) j / steps; 
+                float x = MathUtility.lerp(-len, len, t);
+                
+                // Hiệu ứng bầu ở giữa, nhọn 2 đầu (Shape Fade)
+                float shapeFade = (float) Math.sin(t * Math.PI); 
+                
+                int alphaCore = (int) (baseAlpha * shapeFade * 255);
+                float currentWidth = wid * shapeFade; 
+
+                // Vẽ 3 điểm để tạo dải màu Glow (giữa đậm, biên mờ)
+                buffer.vertex(mat, x, -currentWidth/2, 0).color(c.getRed(), c.getGreen(), c.getBlue(), 0).next();
+                buffer.vertex(mat, x, 0, 0).color(c.getRed(), c.getGreen(), c.getBlue(), alphaCore).next();
+                buffer.vertex(mat, x, currentWidth/2, 0).color(c.getRed(), c.getGreen(), c.getBlue(), 0).next();
+            }
+
+            tessellator.draw();
+            stack.pop();
         }
-        
-        BufferRenderer.drawWithGlobalProgram(buffer.end());
-        RenderSystem.enableCull();
+
+        if (seeThrough.getValue()) {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthMask(true);
+        }
         RenderSystem.disableBlend();
-        stack.pop();
     }
 
-    private void updateTarget() {
-        List<LivingEntity> list = new CopyOnWriteArrayList<>();
-        for (Entity ent : mc.world.getEntities()) {
-            if (!(ent instanceof LivingEntity living) || ent == mc.player || !ent.isAlive()) continue;
-            if (elytraTarget.getValue() && !living.isFallFlying()) continue;
-            if (mc.player.distanceTo(ent) <= attackRange.getValue()) list.add(living);
+    private float[] calculateAngle(Vec3d targetPos) {
+        Vec3d eyesPos = new Vec3d(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ());
+        double dX = targetPos.x - eyesPos.x;
+        double dY = (targetPos.y - eyesPos.y) * -1.0D;
+        double dZ = targetPos.z - eyesPos.z;
+        double dist = Math.sqrt(dX * dX + dZ * dZ);
+        float yaw = (float) Math.toDegrees(Math.atan2(dZ, dX)) - 90.0F;
+        float pitch = (float) Math.toDegrees(Math.atan2(dY, dist));
+        return new float[]{yaw, pitch};
+    }
+
+    private static class GhostSlash {
+        Vec3d pos; float yaw, pitch, age;
+        public GhostSlash(Vec3d pos, float yaw, float pitch) {
+            this.pos = pos; this.yaw = yaw; this.pitch = pitch; this.age = 0;
         }
-        target = list.stream().min(Comparator.comparing(e -> mc.player.distanceTo(e))).orElse(null);
-    }
-
-    public enum Mode { Track, Interact, None }
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
-    public enum Switch { Normal, Silent, None }
-    public enum RayTrace { OFF, OnlyTarget, AllEntities }
-    public enum Resolver { Off, Advantage, Predictive, BackTrack }
-
-    public static class Position {
-        public double x, y, z;
-        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
-        public double getX() { return x; }
-        public double getY() { return y; }
-        public double getZ() { return z; }
-        public boolean shouldRemove() { return false; }
     }
 }
