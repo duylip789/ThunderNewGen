@@ -46,6 +46,10 @@ public class ThunderHack implements ModInitializer {
 
     public static Core core = new Core();
 
+    // Biến kiểm tra xem có đang chạy trên Android/Zalith không
+    public static final boolean isAndroid = System.getProperty("os.name").toLowerCase().contains("android") 
+            || System.getProperty("java.vendor").toLowerCase().contains("the termux project");
+
     static {
         MOD_META = FabricLoader.getInstance().getModContainer(MOD_ID).orElseThrow().getMetadata();
     }
@@ -67,7 +71,18 @@ public class ThunderHack implements ModInitializer {
         Managers.subscribe();
 
         Render2DEngine.initShaders();
-        ModuleManager.rpc.startRpc();
+
+        // FIX CRASH TRÊN ZALITH/POJAV: Chỉ chạy RPC nếu không phải Android
+        if (!isAndroid) {
+            try {
+                ModuleManager.rpc.startRpc();
+                LOGGER.info("[ThunderHack] Discord RPC started successfully.");
+            } catch (Throwable t) {
+                LOGGER.error("[ThunderHack] Failed to start Discord RPC: " + t.getMessage());
+            }
+        } else {
+            LOGGER.warn("[ThunderHack] Running on Android/Zalith. Discord RPC has been disabled to prevent crash.");
+        }
 
         LOGGER.info("[ThunderHack] Init time: {} ms.", System.currentTimeMillis() - initTime);
         initTime = System.currentTimeMillis();
