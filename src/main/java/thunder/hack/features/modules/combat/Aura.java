@@ -8,8 +8,9 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.RotationAxis; // FIX: Sửa lại import đúng cho 1.20+
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Box;
 import org.joml.Matrix4f;
 import thunder.hack.core.Managers;
 import thunder.hack.events.impl.PlayerUpdateEvent;
@@ -27,29 +28,47 @@ import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- SETTINGS ---
+    // --- SETTINGS (BẮT BUỘC CHO MIXIN) ---
+    public final Setting<Mode> rotationMode = new Setting<>("Rotation", Mode.Track);
+    public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
     public final Setting<Float> range = new Setting<>("Range", 3.5f, 1f, 6f);
     public final Setting<Boolean> autoCrit = new Setting<>("StrictCrit", true);
-    public final Setting<Boolean> rotate = new Setting<>("Rotate", true);
-    
+    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", false);
+
+    // --- VISUAL SETTINGS ---
     public final Setting<SettingGroup> sgVisual = new Setting<>("Visuals", new SettingGroup(true, 0));
     public final Setting<Boolean> renderGhost = new Setting<>("GhostSlash", true).addToGroup(sgVisual);
     public final Setting<ColorSetting> ghostColor = new Setting<>("Color", new ColorSetting(new Color(160, 100, 255, 200).getRGB())).addToGroup(sgVisual);
     public final Setting<Float> slashLength = new Setting<>("Length", 3.5f, 1.0f, 6.0f).addToGroup(sgVisual);
     public final Setting<Float> slashWidth = new Setting<>("Width", 0.6f, 0.1f, 2.0f).addToGroup(sgVisual);
-    public final Setting<Boolean> seeThrough = new Setting<>("SeeThrough", true).addToGroup(sgVisual);
+    public final Setting<Boolean> seeThrough = new Setting<>("ThroughWalls", true).addToGroup(sgVisual);
 
-    // --- CÁC ENUM/CLASS BẮT BUỘC ĐỂ FIX LỖI BUILD (DÙNG CHO MIXIN VÀ FILE KHÁC) ---
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
+    // --- CÁC ENUM/CLASS MIXIN YÊU CẦU ---
+    public enum Mode { None, Track, Smooth }
+    public enum Switch { None, Normal, Silent }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    
     public static class Position {
         public double x, y, z;
-        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
+        public long time;
+        public Position(double x, double y, double z) { 
+            this.x = x; this.y = y; this.z = z; 
+            this.time = System.currentTimeMillis();
+        }
+        public double getX() { return x; }
+        public double getY() { return y; }
+        public double getZ() { return z; }
+        public boolean shouldRemove(long delay) {
+            return System.currentTimeMillis() - time > delay;
+        }
     }
 
-    // --- VARIABLES ---
+    // --- BIẾN TOÀN CỤC (MIXIN CẦN) ---
     public static Entity target;
+    public float rotationPitch, rotationYaw;
+    public Box resolvedBox;
+
     private final List<GhostSlashData> slashes = new CopyOnWriteArrayList<>();
     private final Random random = new Random();
 
@@ -58,17 +77,19 @@ public class Aura extends Module {
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
         target = findTarget();
-        slashes.removeIf(s -> (s.age += 0.04f) > 1.0f); // Tốc độ mờ tia
+        slashes.removeIf(s -> (s.age += 0.04f) > 1.0f);
 
         if (target != null) {
-            if (rotate.getValue()) {
-                float[] rotations = calculateAngle(target.getEyePos());
-                mc.player.setYaw(rotations[0]);
-                mc.player.setPitch(rotations[1]);
+            float[] rotations = calculateAngle(target.getEyePos());
+            rotationYaw = rotations[0];
+            rotationPitch = rotations[1];
+
+            if (rotationMode.getValue() != Mode.None) {
+                mc.player.setYaw(rotationYaw);
+                mc.player.setPitch(rotationPitch);
             }
 
             if (mc.player.getAttackCooldownProgress(0.5f) >= 0.95f) {
-                // Đảm bảo Crit tối ưu khi đang rơi
                 if (!autoCrit.getValue() || (mc.player.fallDistance > 0 && !mc.player.isOnGround())) {
                     mc.interactionManager.attackEntity(mc.player, target);
                     mc.player.swingHand(Hand.MAIN_HAND);
@@ -79,7 +100,7 @@ public class Aura extends Module {
     }
 
     private void addSlash(Entity target) {
-        float[] p = {0f, 30f, -30f, 15f, -15f};
+        float[] p = {0f, 35f, -35f, 15f, -15f};
         float pitch = p[random.nextInt(p.length)];
         float yaw = random.nextFloat() * 360f;
         slashes.add(new GhostSlashData(target.getPos().add(0, target.getHeight() * 0.6, 0), yaw, pitch));
@@ -120,7 +141,8 @@ public class Aura extends Module {
                 buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore).next();
                 buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).next();
             }
-            Tessellator.getInstance().draw();
+            // FIX: Sử dụng BufferRenderer thay vì Tessellator.draw() trực tiếp
+            BufferRenderer.drawWithGlobalProgram(buffer.end());
             stack.pop();
         }
         if (seeThrough.getValue()) { RenderSystem.enableDepthTest(); RenderSystem.depthMask(true); }
@@ -152,4 +174,4 @@ public class Aura extends Module {
         Vec3d pos; float yaw, pitch, age;
         public GhostSlashData(Vec3d pos, float yaw, float pitch) { this.pos = pos; this.yaw = yaw; this.pitch = pitch; this.age = 0; }
     }
-}
+    }
