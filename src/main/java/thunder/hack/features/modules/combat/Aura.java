@@ -30,14 +30,14 @@ import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- ENUMS (Bắt buộc cho các module khác và Mixin) ---
+    // --- ENUMS (Bắt buộc phải PUBLIC để các file khác như AutoCrystal truy cập) ---
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
     public enum Mode { None, Track, Smooth }
     public enum Switch { None, Normal, Silent }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
 
-    // --- SETTINGS ---
+    // --- SETTINGS (Bắt buộc cho Mixin và các Module khác) ---
     public final Setting<Mode> rotationMode = new Setting<>("Rotation", Mode.Track);
     public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
     public final Setting<Float> attackRange = new Setting<>("Range", 3.5f, 1f, 6f);
@@ -51,7 +51,7 @@ public class Aura extends Module {
     public final Setting<Float> slashWidth = new Setting<>("Width", 0.6f, 0.1f, 2.0f).addToGroup(sgVisual);
     public final Setting<Boolean> seeThrough = new Setting<>("SeeThrough", true).addToGroup(sgVisual);
 
-    // --- BIẾN TOÀN CỤC ---
+    // --- PUBLIC VARIABLES (Cho Mixin) ---
     public static Entity target;
     public float rotationPitch, rotationYaw;
     public Box resolvedBox;
@@ -61,10 +61,10 @@ public class Aura extends Module {
 
     public Aura() { super("Aura", Category.COMBAT); }
 
-    // --- CÁC HÀM TIỆN ÍCH CHO MODULE KHÁC (PearlChaser, TriggerBot...) ---
+    // --- HÀM TIỆN ÍCH CHO MODULE KHÁC (PearlChaser, TriggerBot, AutoBuff, Phase) ---
     public void pause() { pauseTimer.reset(); }
-    public float getAttackCooldown() { return mc.player.getAttackCooldownProgress(0.5f); }
-    public boolean isAboveWater() { return mc.world.getBlockState(mc.player.getBlockPos().down()).isOf(Blocks.WATER); }
+    public float getAttackCooldown() { return mc.player != null ? mc.player.getAttackCooldownProgress(0.5f) : 0f; }
+    public boolean isAboveWater() { return mc.world != null && mc.player != null && mc.world.getBlockState(mc.player.getBlockPos().down()).isOf(Blocks.WATER); }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
@@ -117,7 +117,7 @@ public class Aura extends Module {
 
             Matrix4f mat = stack.peek().getPositionMatrix();
             
-            // XỬ LÝ RENDER THEO MAPPING 1.20.5+
+            // CHUẨN RENDER 1.21 (Yarn Mappings)
             Tessellator tessellator = Tessellator.getInstance();
             BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
@@ -133,12 +133,17 @@ public class Aura extends Module {
                 int aCore = (int) (alpha * fade * 255);
                 float curW = w * fade;
 
-                // FIX LỖI #99: Dùng lại next() thay vì endVertex()
-                buffer.vertex(mat, x, -curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).next();
-                buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore).next();
-                buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).next();
+                // FIX 100%: Trong 1.21 Yarn, vertex(matrix, x, y, z) KHÔNG dùng .next() hay .endVertex()
+                buffer.vertex(mat, x, -curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0);
+                buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore);
+                buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0);
             }
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
+            
+            // Kết thúc Buffer và vẽ
+            BuiltBuffer builtBuffer = buffer.end();
+            if (builtBuffer != null) {
+                BufferRenderer.drawWithGlobalProgram(builtBuffer);
+            }
             stack.pop();
         }
         if (seeThrough.getValue()) { RenderSystem.enableDepthTest(); RenderSystem.depthMask(true); }
@@ -166,7 +171,7 @@ public class Aura extends Module {
         return new float[]{(float) Math.toDegrees(Math.atan2(dZ, dX)) - 90.0f, (float) Math.toDegrees(Math.atan2(dY, dist))};
     }
 
-    // --- CLASS POSITION CHO MIXIN ---
+    // --- CLASS POSITION (Fix cho MixinEntityLiving và MixinOtherClientPlayerEntity) ---
     public static class Position {
         public double x, y, z;
         public long time;
