@@ -27,33 +27,43 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- COMBAT SETTINGS (KHÔI PHỤC ĐỂ KHÔNG LỖI MIXIN/TRIGGERBOT) ---
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
     public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", false);
 
-    // --- VISUALS GROUP (KQQ LIQUID ESP) ---
     public final Setting<SettingGroup> visualGroup = new Setting<>("Visuals", new SettingGroup(false, 0));
     public final Setting<ESP> esp = new Setting<>("ESP Mode", ESP.Liquid).addToGroup(visualGroup);
     public final Setting<ColorSetting> slashColor = new Setting<>("Color", new ColorSetting(new Color(180, 150, 255, 200).getRGB())).addToGroup(visualGroup);
     public final Setting<Float> slashSize = new Setting<>("Size", 1.3f, 0.5f, 2.5f).addToGroup(visualGroup);
     public final Setting<Float> slashSpeed = new Setting<>("Speed", 1.5f, 0.1f, 5.0f).addToGroup(visualGroup);
 
-    // --- BIẾN PUBLIC HỆ THỐNG YÊU CẦU ---
     public static Entity target;
     public float rotationYaw, rotationPitch;
     public Box resolvedBox;
     private float slashAnim;
     private int hitTicks;
+    private final Timer pauseTimer = new Timer();
 
     public Aura() { super("Aura", Category.COMBAT); }
+
+    // --- CÁC HÀM FIX LỖI MIXIN/TRIGGERBOT ---
+    public void pause() { pauseTimer.reset(); }
+    
+    public float getAttackCooldown() {
+        return mc.player.getAttackCooldownProgress(0.5f);
+    }
+
+    public boolean isAboveWater() {
+        // Fix lỗi getMaterial() bằng cách check isLiquid() trực tiếp trên BlockState
+        return mc.world.getBlockState(mc.player.getBlockPos().down()).isLiquid();
+    }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
         updateTarget();
-        if (target == null) return;
+        if (target == null || !pauseTimer.passedMs(500)) return;
 
         if (getAttackCooldown() >= attackCooldown.getValue()) {
             if (hitTicks <= 0) {
@@ -62,14 +72,6 @@ public class Aura extends Module {
             }
         }
         hitTicks--;
-    }
-
-    public float getAttackCooldown() {
-        return mc.player.getAttackCooldownProgress(0.5f);
-    }
-
-    public boolean isAboveWater() {
-        return mc.world.getBlockState(mc.player.getBlockPos().down()).getMaterial().isLiquid();
     }
 
     public void attack() {
@@ -98,7 +100,8 @@ public class Aura extends Module {
             switch (esp.getValue()) {
                 case Liquid -> renderKQQSlash(stack, living);
                 case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, false, 1.0f, target);
+                // Fix lỗi ép kiểu float -> int trong renderGhosts
+                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, false, (int)1.0f, target);
                 case NurikZapen -> CaptureMark.render(target);
             }
         }
@@ -113,8 +116,6 @@ public class Aura extends Module {
         Color color = new Color(slashColor.getValue().getColor());
         stack.push();
         stack.translate(x, y, z);
-        
-        // HIỆU ỨNG MỎNG DẸT CHUẨN KQQ
         stack.scale(1.0f, 0.15f, 1.0f); 
 
         drawArc(stack, slashAnim, slashSize.getValue(), color, 45f);
@@ -128,6 +129,7 @@ public class Aura extends Module {
         stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(tilt));
         Matrix4f matrix = stack.peek().getPositionMatrix();
         
+        // FIX LỖI RENDER 1.20+ (Cú pháp mới hoàn toàn)
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder buffer = tessellator.getBuffer();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
@@ -141,7 +143,7 @@ public class Aura extends Module {
             float sin = (float) Math.sin(angle) * radius;
             int alpha = (int) (color.getAlpha() * (1.0f - (i / 160.0f)));
             
-            // Vẽ dải Neon mờ ảo (Glow)
+            // Dùng .vertex().color().next() cho Fabric 1.20.x
             buffer.vertex(matrix, cos, -0.1f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha).next();
             buffer.vertex(matrix, cos, 0.7f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0).next();
         }
@@ -161,18 +163,20 @@ public class Aura extends Module {
         target = list.stream().min(Comparator.comparing(e -> mc.player.distanceTo(e))).orElse(null);
     }
 
-    // --- ENUMS CẦN THIẾT ĐỂ FIX LỖI BUILD (FIXED) ---
+    // --- ENUMS & CLASSES FIX MIXIN ---
     public enum Mode { Track, Interact, None }
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
     public enum Switch { Normal, Silent, None }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
-    
-    // Đã thêm lại Resolver để sửa lỗi MixinOtherClientPlayerEntity
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
 
     public static class Position {
         public double x, y, z;
         public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
+        // Thêm Getter để fix lỗi MixinOtherClientPlayerEntity
+        public double getX() { return x; }
+        public double getY() { return y; }
+        public double getZ() { return z; }
         public boolean shouldRemove() { return false; }
     }
 }
