@@ -1,191 +1,103 @@
 package thunder.hack.features.modules.combat;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import baritone.api.BaritoneAPI;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.client.render.*;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.*;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.*;
+import net.minecraft.network.packet.c2s.play.*;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Box;
-import net.minecraft.block.Blocks;
-import org.joml.Matrix4f;
-import thunder.hack.core.Managers;
-import thunder.hack.events.impl.PlayerUpdateEvent;
+import net.minecraft.util.math.*;
+import thunder.hack.ThunderHack;
+import thunder.hack.core.*;
+import thunder.hack.core.manager.client.ModuleManager;
+import thunder.hack.events.impl.*;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
-import thunder.hack.setting.impl.ColorSetting;
-import thunder.hack.setting.impl.SettingGroup;
-import thunder.hack.utility.math.MathUtility;
+import thunder.hack.setting.impl.*;
 import thunder.hack.utility.Timer;
-
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.CopyOnWriteArrayList;
+import thunder.hack.utility.math.MathUtility;
+import thunder.hack.utility.player.*;
+import thunder.hack.utility.render.Render2DEngine;
+import thunder.hack.utility.render.Render3DEngine;
+import java.util.*;
 
 public class Aura extends Module {
-    // --- ENUMS (Bắt buộc phải PUBLIC để các file khác như AutoCrystal truy cập) ---
-    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
-    public enum Mode { None, Track, Smooth }
-    public enum Switch { None, Normal, Silent }
-    public enum RayTrace { OFF, OnlyTarget, AllEntities }
-    public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    public final Setting<Float> range = new Setting<>("Range", 3.1f, 1f, 6f);
+    public final Setting<Mode> rotMode = new Setting<>("Rotation", Mode.Track);
+    public final Setting<Switch> autoWep = new Setting<>("Switch", Switch.None);
+    public final Setting<BooleanSettingGroup> crit = new Setting<>("Crit", new BooleanSettingGroup(true));
+    public final Setting<Boolean> shieldBk = new Setting<>("ShieldBreaker", true);
+    public final Setting<Boolean> clientLook = new Setting<>("ClientLook", false);
+    public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
 
-    // --- SETTINGS (Bắt buộc cho Mixin và các Module khác) ---
-    public final Setting<Mode> rotationMode = new Setting<>("Rotation", Mode.Track);
-    public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
-    public final Setting<Float> attackRange = new Setting<>("Range", 3.5f, 1f, 6f);
-    public final Setting<Boolean> autoCrit = new Setting<>("StrictCrit", true);
-    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", false);
-
-    public final Setting<SettingGroup> sgVisual = new Setting<>("Visuals", new SettingGroup(true, 0));
-    public final Setting<Boolean> renderGhost = new Setting<>("GhostSlash", true).addToGroup(sgVisual);
-    public final Setting<ColorSetting> ghostColor = new Setting<>("Color", new ColorSetting(new Color(160, 100, 255, 200).getRGB())).addToGroup(sgVisual);
-    public final Setting<Float> slashLength = new Setting<>("Length", 3.5f, 1.0f, 6.0f).addToGroup(sgVisual);
-    public final Setting<Float> slashWidth = new Setting<>("Width", 0.6f, 0.1f, 2.0f).addToGroup(sgVisual);
-    public final Setting<Boolean> seeThrough = new Setting<>("SeeThrough", true).addToGroup(sgVisual);
-
-    // --- PUBLIC VARIABLES (Cho Mixin) ---
     public static Entity target;
-    public float rotationPitch, rotationYaw;
-    public Box resolvedBox;
-    private final Timer pauseTimer = new Timer();
-    private final List<GhostSlashData> slashes = new CopyOnWriteArrayList<>();
-    private final Random random = new Random();
+    private float yaw, pitch;
+    private int hitTicks;
+    private final Timer pTimer = new Timer();
 
     public Aura() { super("Aura", Category.COMBAT); }
 
-    // --- HÀM TIỆN ÍCH CHO MODULE KHÁC (PearlChaser, TriggerBot, AutoBuff, Phase) ---
-    public void pause() { pauseTimer.reset(); }
-    public float getAttackCooldown() { return mc.player != null ? mc.player.getAttackCooldownProgress(0.5f) : 0f; }
-    public boolean isAboveWater() { return mc.world != null && mc.player != null && mc.world.getBlockState(mc.player.getBlockPos().down()).isOf(Blocks.WATER); }
-
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
-        if (!pauseTimer.passedMs(500)) return;
-
+        if (mc.player.isUsingItem() || !pTimer.passedMs(1000)) return;
         target = findTarget();
-        slashes.removeIf(s -> (s.age += 0.04f) > 1.0f);
+        if (target == null) return;
 
-        if (target != null) {
-            float[] rotations = calculateAngle(target.getEyePos());
-            rotationYaw = rotations[0];
-            rotationPitch = rotations[1];
-
-            if (rotationMode.getValue() != Mode.None) {
-                mc.player.setYaw(rotationYaw);
-                mc.player.setPitch(rotationPitch);
-            }
-
-            if (getAttackCooldown() >= 0.95f) {
-                if (!autoCrit.getValue() || (mc.player.fallDistance > 0 && !mc.player.isOnGround())) {
-                    mc.interactionManager.attackEntity(mc.player, target);
-                    mc.player.swingHand(Hand.MAIN_HAND);
-                    if (renderGhost.getValue()) addSlash(target);
-                }
-            }
+        if (canAttack()) {
+            shieldBreaker();
+            boolean sprint = Core.serverSprint;
+            if (sprint) mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
+            
+            attack();
+            
+            if (sprint) mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
         }
+        hitTicks--;
     }
 
-    private void addSlash(Entity target) {
-        float[] p = {0f, 35f, -35f, 15f, -15f};
-        float pitch = p[random.nextInt(p.length)];
-        float yaw = random.nextFloat() * 360f;
-        slashes.add(new GhostSlashData(target.getPos().add(0, target.getHeight() * 0.6, 0), yaw, pitch));
+    private void attack() {
+        int slot = autoWep.getValue() == Switch.Silent ? mc.player.getInventory().selectedSlot : -1;
+        if (autoWep.getValue() != Switch.None) InventoryUtility.getSwordHotBar().switchTo();
+        
+        mc.interactionManager.attackEntity(mc.player, target);
+        mc.player.swingHand(Hand.MAIN_HAND);
+        hitTicks = 10;
+        
+        if (slot != -1) InventoryUtility.switchTo(slot);
+    }
+
+    private boolean canAttack() {
+        return hitTicks <= 0 && mc.player.getAttackCooldownProgress(0.5f) >= 0.9f && (mc.player.fallDistance > 0.1 || !crit.getValue().isEnabled());
+    }
+
+    private Entity findTarget() {
+        return mc.world.getEntities().stream()
+            .filter(e -> e instanceof LivingEntity && e != mc.player && e.isAlive() && mc.player.distanceTo(e) <= range.getValue())
+            .filter(e -> !(e instanceof PlayerEntity p) || !Managers.FRIEND.isFriend(p))
+            .min(Comparator.comparingDouble(e -> mc.player.squaredDistanceTo(e))).orElse(null);
+    }
+
+    private void shieldBreaker() {
+        if (shieldBk.getValue() && target instanceof PlayerEntity p && p.isBlocking()) {
+            int axe = InventoryUtility.getAxe().slot();
+            if (axe != -1) {
+                InventoryUtility.switchTo(axe);
+                mc.interactionManager.attackEntity(mc.player, target);
+                mc.player.swingHand(Hand.MAIN_HAND);
+            }
+        }
     }
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        if (slashes.isEmpty()) return;
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        if (seeThrough.getValue()) { RenderSystem.disableDepthTest(); RenderSystem.depthMask(false); }
-
-        for (GhostSlashData s : slashes) {
-            stack.push();
-            Vec3d c = mc.getEntityRenderDispatcher().camera.getPos();
-            stack.translate(s.pos.x - c.x, s.pos.y - c.y, s.pos.z - c.z);
-            stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(s.yaw));
-            stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(s.pitch));
-
-            Matrix4f mat = stack.peek().getPositionMatrix();
-            
-            // CHUẨN RENDER 1.21 (Yarn Mappings)
-            Tessellator tessellator = Tessellator.getInstance();
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
-
-            Color colorObj = ghostColor.getValue().getColorObject();
-            float alpha = (colorObj.getAlpha() / 255f) * (1.0f - s.age);
-            float l = slashLength.getValue();
-            float w = slashWidth.getValue();
-
-            for (int j = 0; j <= 20; j++) {
-                float t = (float) j / 20;
-                float x = MathUtility.lerp(-l, l, t);
-                float fade = (float) Math.sin(t * Math.PI);
-                int aCore = (int) (alpha * fade * 255);
-                float curW = w * fade;
-
-                // FIX 100%: Trong 1.21 Yarn, vertex(matrix, x, y, z) KHÔNG dùng .next() hay .endVertex()
-                buffer.vertex(mat, x, -curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0);
-                buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore);
-                buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0);
-            }
-            
-            // Kết thúc Buffer và vẽ
-            BuiltBuffer builtBuffer = buffer.end();
-            if (builtBuffer != null) {
-                BufferRenderer.drawWithGlobalProgram(builtBuffer);
-            }
-            stack.pop();
+        if (clientLook.getValue() && target != null) {
+            mc.player.setYaw(yaw);
+            mc.player.setPitch(pitch);
         }
-        if (seeThrough.getValue()) { RenderSystem.enableDepthTest(); RenderSystem.depthMask(true); }
-        RenderSystem.disableBlend();
     }
 
-    private Entity findTarget() {
-        List<LivingEntity> targets = new ArrayList<>();
-        for (Entity e : mc.world.getEntities()) {
-            if (e instanceof LivingEntity living && e != mc.player && living.isAlive()) {
-                if (e instanceof PlayerEntity p && Managers.FRIEND.isFriend(p)) continue;
-                if (mc.player.distanceTo(e) <= attackRange.getValue()) targets.add(living);
-            }
-        }
-        targets.sort(Comparator.comparingDouble(LivingEntity::getHealth));
-        return targets.isEmpty() ? null : targets.get(0);
-    }
-
-    private float[] calculateAngle(Vec3d target) {
-        Vec3d eyes = new Vec3d(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ());
-        double dX = target.x - eyes.x;
-        double dY = (target.y - eyes.y) * -1.0;
-        double dZ = target.z - eyes.z;
-        double dist = Math.sqrt(dX * dX + dZ * dZ);
-        return new float[]{(float) Math.toDegrees(Math.atan2(dZ, dX)) - 90.0f, (float) Math.toDegrees(Math.atan2(dY, dist))};
-    }
-
-    // --- CLASS POSITION (Fix cho MixinEntityLiving và MixinOtherClientPlayerEntity) ---
-    public static class Position {
-        public double x, y, z;
-        public long time;
-        public Position(double x, double y, double z) { 
-            this.x = x; this.y = y; this.z = z; this.time = System.currentTimeMillis();
-        }
-        public double getX() { return x; }
-        public double getY() { return y; }
-        public double getZ() { return z; }
-        public boolean shouldRemove() { return System.currentTimeMillis() - time > 1000; }
-    }
-
-    private static class GhostSlashData {
-        Vec3d pos; float yaw, pitch, age;
-        public GhostSlashData(Vec3d pos, float yaw, float pitch) { this.pos = pos; this.yaw = yaw; this.pitch = pitch; this.age = 0; }
-    }
+    public enum Mode { Track, Grim, None }
+    public enum Sort { LowestDistance, LowestHealth, FOV }
+    public enum Switch { Normal, Silent, None }
 }
