@@ -28,7 +28,14 @@ import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- SETTINGS (BẮT BUỘC CHO MIXIN) ---
+    // --- CÁC ENUM BẮT BUỘC (PHẢI ĐẶT LÊN ĐẦU ĐỂ FILE KHÁC NHƯ AUTOCRYSTAL THẤY ĐƯỢC) ---
+    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
+    public enum Mode { None, Track, Smooth }
+    public enum Switch { None, Normal, Silent }
+    public enum RayTrace { OFF, OnlyTarget, AllEntities }
+    public enum Resolver { Off, Advantage, Predictive, BackTrack }
+
+    // --- SETTINGS ---
     public final Setting<Mode> rotationMode = new Setting<>("Rotation", Mode.Track);
     public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
     public final Setting<Float> range = new Setting<>("Range", 3.5f, 1f, 6f);
@@ -41,14 +48,9 @@ public class Aura extends Module {
     public final Setting<ColorSetting> ghostColor = new Setting<>("Color", new ColorSetting(new Color(160, 100, 255, 200).getRGB())).addToGroup(sgVisual);
     public final Setting<Float> slashLength = new Setting<>("Length", 3.5f, 1.0f, 6.0f).addToGroup(sgVisual);
     public final Setting<Float> slashWidth = new Setting<>("Width", 0.6f, 0.1f, 2.0f).addToGroup(sgVisual);
-    public final Setting<Boolean> seeThrough = new Setting<>("ThroughWalls", true).addToGroup(sgVisual);
+    public final Setting<Boolean> seeThrough = new Setting<>("SeeThrough", true).addToGroup(sgVisual);
 
-    // --- CÁC ENUM/CLASS MIXIN YÊU CẦU ---
-    public enum Mode { None, Track, Smooth }
-    public enum Switch { None, Normal, Silent }
-    public enum RayTrace { OFF, OnlyTarget, AllEntities }
-    public enum Resolver { Off, Advantage, Predictive, BackTrack }
-    
+    // --- CLASS POSITION (FIX LỖI MIXINENTITYLIVING) ---
     public static class Position {
         public double x, y, z;
         public long time;
@@ -59,16 +61,16 @@ public class Aura extends Module {
         public double getX() { return x; }
         public double getY() { return y; }
         public double getZ() { return z; }
-        public boolean shouldRemove(long delay) {
-            return System.currentTimeMillis() - time > delay;
+        // Fix lỗi method reference Aura.Position::shouldRemove ở Mixin
+        public boolean shouldRemove() {
+            return System.currentTimeMillis() - time > 1000; 
         }
     }
 
-    // --- BIẾN TOÀN CỤC (MIXIN CẦN) ---
+    // --- BIẾN TOÀN CỤC ---
     public static Entity target;
     public float rotationPitch, rotationYaw;
     public Box resolvedBox;
-
     private final List<GhostSlashData> slashes = new CopyOnWriteArrayList<>();
     private final Random random = new Random();
 
@@ -90,6 +92,7 @@ public class Aura extends Module {
             }
 
             if (mc.player.getAttackCooldownProgress(0.5f) >= 0.95f) {
+                // Tối ưu Crit: Đang rơi và không chạm đất
                 if (!autoCrit.getValue() || (mc.player.fallDistance > 0 && !mc.player.isOnGround())) {
                     mc.interactionManager.attackEntity(mc.player, target);
                     mc.player.swingHand(Hand.MAIN_HAND);
@@ -100,6 +103,7 @@ public class Aura extends Module {
     }
 
     private void addSlash(Entity target) {
+        // Góc chém đa hướng: Ngang, Xiên trái, Xiên phải
         float[] p = {0f, 35f, -35f, 15f, -15f};
         float pitch = p[random.nextInt(p.length)];
         float yaw = random.nextFloat() * 360f;
@@ -112,7 +116,10 @@ public class Aura extends Module {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        if (seeThrough.getValue()) { RenderSystem.disableDepthTest(); RenderSystem.depthMask(false); }
+        if (seeThrough.getValue()) { 
+            RenderSystem.disableDepthTest(); 
+            RenderSystem.depthMask(false); 
+        }
 
         for (GhostSlashData s : slashes) {
             stack.push();
@@ -130,10 +137,11 @@ public class Aura extends Module {
             float l = slashLength.getValue();
             float w = slashWidth.getValue();
 
+            // Vẽ tia chém Glow tia dài, mờ ảo (Kiểu ThunderV2)
             for (int j = 0; j <= 20; j++) {
                 float t = (float) j / 20;
                 float x = MathUtility.lerp(-l, l, t);
-                float fade = (float) Math.sin(t * Math.PI);
+                float fade = (float) Math.sin(t * Math.PI); // Nhọn 2 đầu
                 int aCore = (int) (alpha * fade * 255);
                 float curW = w * fade;
 
@@ -141,11 +149,13 @@ public class Aura extends Module {
                 buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore).next();
                 buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).next();
             }
-            // FIX: Sử dụng BufferRenderer thay vì Tessellator.draw() trực tiếp
             BufferRenderer.drawWithGlobalProgram(buffer.end());
             stack.pop();
         }
-        if (seeThrough.getValue()) { RenderSystem.enableDepthTest(); RenderSystem.depthMask(true); }
+        if (seeThrough.getValue()) { 
+            RenderSystem.enableDepthTest(); 
+            RenderSystem.depthMask(true); 
+        }
         RenderSystem.disableBlend();
     }
 
@@ -172,6 +182,8 @@ public class Aura extends Module {
 
     private static class GhostSlashData {
         Vec3d pos; float yaw, pitch, age;
-        public GhostSlashData(Vec3d pos, float yaw, float pitch) { this.pos = pos; this.yaw = yaw; this.pitch = pitch; this.age = 0; }
+        public GhostSlashData(Vec3d pos, float yaw, float pitch) { 
+            this.pos = pos; this.yaw = yaw; this.pitch = pitch; this.age = 0; 
+        }
     }
-    }
+}
