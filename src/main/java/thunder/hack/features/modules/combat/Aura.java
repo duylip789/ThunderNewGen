@@ -30,7 +30,7 @@ import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- ENUMS ---
+    // --- ENUMS (Bắt buộc cho các module khác và Mixin) ---
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
     public enum Mode { None, Track, Smooth }
     public enum Switch { None, Normal, Silent }
@@ -40,7 +40,7 @@ public class Aura extends Module {
     // --- SETTINGS ---
     public final Setting<Mode> rotationMode = new Setting<>("Rotation", Mode.Track);
     public final Setting<Switch> switchMode = new Setting<>("Switch", Switch.Normal);
-    public final Setting<Float> attackRange = new Setting<>("Range", 3.5f, 1f, 6f); // Sửa tên thành attackRange cho HitBubbles
+    public final Setting<Float> attackRange = new Setting<>("Range", 3.5f, 1f, 6f);
     public final Setting<Boolean> autoCrit = new Setting<>("StrictCrit", true);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", false);
 
@@ -51,7 +51,7 @@ public class Aura extends Module {
     public final Setting<Float> slashWidth = new Setting<>("Width", 0.6f, 0.1f, 2.0f).addToGroup(sgVisual);
     public final Setting<Boolean> seeThrough = new Setting<>("SeeThrough", true).addToGroup(sgVisual);
 
-    // --- PUBLIC VARIABLES ---
+    // --- BIẾN TOÀN CỤC ---
     public static Entity target;
     public float rotationPitch, rotationYaw;
     public Box resolvedBox;
@@ -61,14 +61,14 @@ public class Aura extends Module {
 
     public Aura() { super("Aura", Category.COMBAT); }
 
-    // --- HELPER METHODS CHO MODULE KHÁC ---
+    // --- CÁC HÀM TIỆN ÍCH CHO MODULE KHÁC (PearlChaser, TriggerBot...) ---
     public void pause() { pauseTimer.reset(); }
     public float getAttackCooldown() { return mc.player.getAttackCooldownProgress(0.5f); }
     public boolean isAboveWater() { return mc.world.getBlockState(mc.player.getBlockPos().down()).isOf(Blocks.WATER); }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
-        if (!pauseTimer.passedMs(500)) return; // Tạm dừng nếu bị module khác gọi pause()
+        if (!pauseTimer.passedMs(500)) return;
 
         target = findTarget();
         slashes.removeIf(s -> (s.age += 0.04f) > 1.0f);
@@ -117,7 +117,7 @@ public class Aura extends Module {
 
             Matrix4f mat = stack.peek().getPositionMatrix();
             
-            // FIX CHO MC 1.21: Tessellator.getInstance().begin()
+            // XỬ LÝ RENDER THEO MAPPING 1.20.5+
             Tessellator tessellator = Tessellator.getInstance();
             BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
@@ -133,10 +133,10 @@ public class Aura extends Module {
                 int aCore = (int) (alpha * fade * 255);
                 float curW = w * fade;
 
-                // FIX CHO MC 1.21: endVertex() thay cho next()
-                buffer.vertex(mat, x, -curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).endVertex();
-                buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore).endVertex();
-                buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).endVertex();
+                // FIX LỖI #99: Dùng lại next() thay vì endVertex()
+                buffer.vertex(mat, x, -curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).next();
+                buffer.vertex(mat, x, 0, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), aCore).next();
+                buffer.vertex(mat, x, curW/2, 0).color(colorObj.getRed(), colorObj.getGreen(), colorObj.getBlue(), 0).next();
             }
             BufferRenderer.drawWithGlobalProgram(buffer.end());
             stack.pop();
@@ -183,4 +183,4 @@ public class Aura extends Module {
         Vec3d pos; float yaw, pitch, age;
         public GhostSlashData(Vec3d pos, float yaw, float pitch) { this.pos = pos; this.yaw = yaw; this.pitch = pitch; this.age = 0; }
     }
-        }
+}
