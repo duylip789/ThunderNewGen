@@ -48,7 +48,6 @@ public class Aura extends Module {
 
     public Aura() { super("Aura", Category.COMBAT); }
 
-    // --- CÁC HÀM FIX LỖI MIXIN/TRIGGERBOT ---
     public void pause() { pauseTimer.reset(); }
     
     public float getAttackCooldown() {
@@ -56,7 +55,6 @@ public class Aura extends Module {
     }
 
     public boolean isAboveWater() {
-        // Fix lỗi getMaterial() bằng cách check isLiquid() trực tiếp trên BlockState
         return mc.world.getBlockState(mc.player.getBlockPos().down()).isLiquid();
     }
 
@@ -100,8 +98,8 @@ public class Aura extends Module {
             switch (esp.getValue()) {
                 case Liquid -> renderKQQSlash(stack, living);
                 case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-                // Fix lỗi ép kiểu float -> int trong renderGhosts
-                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, false, (int)1.0f, target);
+                // FIX: Ép kiểu float sang int cho số lượng ghost
+                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, false, 1, target);
                 case NurikZapen -> CaptureMark.render(target);
             }
         }
@@ -129,24 +127,26 @@ public class Aura extends Module {
         stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(tilt));
         Matrix4f matrix = stack.peek().getPositionMatrix();
         
-        // FIX LỖI RENDER 1.20+ (Cú pháp mới hoàn toàn)
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.getBuffer();
+        // FIX LỖI BUILD: Cú pháp Render mới cho 1.20.x/1.21
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableCull();
 
-        buffer.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        Tessellator tessellator = Tessellator.getInstance();
+        // Minecraft 1.20.x+ sử dụng drawContext hoặc trực tiếp gọi từ BufferBuilder
+        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        
         for (int i = 0; i <= 160; i += 10) {
             float angle = (float) Math.toRadians(i);
             float cos = (float) Math.cos(angle) * radius;
             float sin = (float) Math.sin(angle) * radius;
             int alpha = (int) (color.getAlpha() * (1.0f - (i / 160.0f)));
             
-            // Dùng .vertex().color().next() cho Fabric 1.20.x
-            buffer.vertex(matrix, cos, -0.1f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha).next();
-            buffer.vertex(matrix, cos, 0.7f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0).next();
+            // Cú pháp mới: vertex(matrix, x, y, z).color(r, g, b, a)
+            buffer.vertex(matrix, cos, -0.1f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
+            buffer.vertex(matrix, cos, 0.7f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0);
         }
+        
         BufferRenderer.drawWithGlobalProgram(buffer.end());
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
@@ -163,7 +163,6 @@ public class Aura extends Module {
         target = list.stream().min(Comparator.comparing(e -> mc.player.distanceTo(e))).orElse(null);
     }
 
-    // --- ENUMS & CLASSES FIX MIXIN ---
     public enum Mode { Track, Interact, None }
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Liquid }
     public enum Switch { Normal, Silent, None }
@@ -173,7 +172,6 @@ public class Aura extends Module {
     public static class Position {
         public double x, y, z;
         public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
-        // Thêm Getter để fix lỗi MixinOtherClientPlayerEntity
         public double getX() { return x; }
         public double getY() { return y; }
         public double getZ() { return z; }
