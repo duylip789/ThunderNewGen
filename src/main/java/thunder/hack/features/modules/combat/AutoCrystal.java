@@ -5,48 +5,34 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import thunder.hack.features.modules.Module;
-import thunder.hack.features.modules.ModuleCategory;
-import thunder.hack.features.setting.Setting;
 
 public class AutoCrystal extends Module {
 
-    /* ================= CORE SHARED ================= */
+    /* ===== CORE FIELDS (BẮT BUỘC) ===== */
 
     public static PlayerEntity target = null;
     public float renderDamage = Float.NaN;
 
-    /* ================= SETTINGS (DUMMY) ================= */
+    /* ===== DUMMY CONFIG VALUES ===== */
 
-    public final Setting<Float> maxSelfDamage =
-            new Setting<>("MaxSelfDamage", 6.0f, 0.0f, 20.0f);
+    public boolean ignoreTerrain = false;
+    public boolean assumeBestArmor = false;
+    public boolean breakFailsafe = false;
+    public boolean placeFailsafe = false;
+    public int attempts = 1;
 
-    public final Setting<Boolean> ignoreTerrain =
-            new Setting<>("IgnoreTerrain", false);
-
-    public final Setting<Boolean> assumeBestArmor =
-            new Setting<>("AssumeBestArmor", false);
-
-    public final Setting<Boolean> breakFailsafe =
-            new Setting<>("BreakFailsafe", false);
-
-    public final Setting<Boolean> placeFailsafe =
-            new Setting<>("PlaceFailsafe", false);
-
-    public final Setting<Integer> attempts =
-            new Setting<>("Attempts", 1, 1, 10);
-
-    /* ================= CONSTRUCTOR ================= */
+    /* ===== CONSTRUCTOR ===== */
 
     public AutoCrystal() {
-        super("AutoCrystal", ModuleCategory.COMBAT);
-        setEnabled(false);   // ❌ không bật
-        setDrawn(false);    // ❌ không hiện trong ClickGUI
+        super("AutoCrystal");
+        this.setEnabled(false);
+        this.setDrawn(false);
     }
 
-    /* ================= METHODS USED BY OTHER MODULES ================= */
+    /* ===== METHODS CÁC CLASS KHÁC GỌI ===== */
 
     public void pause() {
-        // no-op
+        // stub
     }
 
     public boolean isPositionBlockedByCrystal(BlockPos pos) {
@@ -58,16 +44,11 @@ public class AutoCrystal extends Module {
         return null;
     }
 
-    @Nullable
-    public Object getInteractResult(BlockPos pos, Vec3d hit) {
-        return null;
-    }
-
     public void placeCrystal(BlockPos pos, boolean rotate, boolean swing) {
-        // no-op
+        // stub
     }
 
-    /* ================= INNER DATA CLASS ================= */
+    /* ===== INNER CLASS ===== */
 
     public static class PlaceData {
         public BlockPos bhr() {
