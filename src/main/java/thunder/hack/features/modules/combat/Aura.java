@@ -19,6 +19,7 @@ import thunder.hack.setting.impl.ColorSetting;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.render.Render3DEngine;
+import thunder.hack.utility.render.animation.CaptureMark;
 
 import java.awt.Color;
 import java.util.Comparator;
@@ -26,16 +27,16 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- NHÓM COMBAT (HIT + SPRINT) ---
+    // --- COMBAT SETTINGS ---
     public final Setting<SettingGroup> combatGroup = new Setting<>("Combat", new SettingGroup(false, 0));
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f).addToGroup(combatGroup);
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(combatGroup);
     public final Setting<SprintMode> sprintMode = new Setting<>("Sprint Mode", SprintMode.Keep).addToGroup(combatGroup);
     public final Setting<Boolean> elytraTarget = new Setting<>("Elytra Target", false).addToGroup(combatGroup);
 
-    // --- NHÓM VISUALS (ESP MỜ ẢO CHUẨN KQQ) ---
+    // --- VISUALS SETTINGS (BAO GỒM FULL ESP CŨ + KQQ) ---
     public final Setting<SettingGroup> visualGroup = new Setting<>("Visuals", new SettingGroup(false, 0));
-    public final Setting<ESPMode> espMode = new Setting<>("ESP Mode", ESPMode.Liquid).addToGroup(visualGroup);
+    public final Setting<ESP> esp = new Setting<>("ESP Mode", ESP.Liquid).addToGroup(visualGroup);
     public final Setting<ColorSetting> slashColor = new Setting<>("Slash Color", new ColorSetting(new Color(180, 150, 255, 200).getRGB())).addToGroup(visualGroup);
     public final Setting<Float> slashSize = new Setting<>("Slash Size", 1.3f, 0.5f, 2.5f).addToGroup(visualGroup);
     public final Setting<Float> slashSpeed = new Setting<>("Slash Speed", 1.5f, 0.1f, 5.0f).addToGroup(visualGroup);
@@ -45,86 +46,75 @@ public class Aura extends Module {
     private int hitTicks;
     private final Timer pauseTimer = new Timer();
 
-    public Aura() {
-        super("Aura", Category.COMBAT);
-    }
+    public Aura() { super("Aura", Category.COMBAT); }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
         updateTarget();
         if (target == null) return;
 
-        // --- SPRINT MODE ---
-        if (sprintMode.getValue() == SprintMode.Keep) {
-            mc.player.setSprinting(true);
-        }
+        if (sprintMode.getValue() == SprintMode.Keep) mc.player.setSprinting(true);
 
-        // --- LOGIC HIT & FULL CRIT ---
-        // Chỉ đánh khi đang rơi (fallDistance) hoặc Creative để đảm bảo luôn Crit (HvH Meta)
+        // Logic Hit Full Crit
         boolean isFalling = mc.player.fallDistance > 0.05f && !mc.player.isOnGround();
-        
         if (isFalling || mc.player.getAbilities().creativeMode) {
             if (mc.player.getAttackCooldownProgress(0.5f) >= attackCooldown.getValue()) {
                 if (hitTicks <= 0) {
-                    doAttack();
-                    hitTicks = 10; // Tốc độ hit ổn định để bypass anti-cheat
+                    attack();
+                    hitTicks = 10;
                 }
             }
         }
         hitTicks--;
     }
 
-    private void doAttack() {
+    private void attack() {
         if (target == null) return;
-        
-        // Hỗ trợ Criticals module
         Criticals.cancelCrit = true;
         ModuleManager.criticals.doCrit();
-        
-        // Gửi packet tấn công và Swing tay
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
-        
         Criticals.cancelCrit = false;
     }
 
     @EventHandler
     public void onSync(EventSync e) {
         if (target != null) {
-            // Rotations mượt mà về phía mục tiêu
             float[] angles = Managers.PLAYER.calcAngle(target.getEyePos());
             mc.player.setYaw(angles[0]);
             mc.player.setPitch(angles[1]);
         }
     }
 
-    // --- RENDER ESP LIQUID MỜ ẢO (KQQ STYLE) ---
     @Override
     public void onRender3D(MatrixStack stack) {
-        if (target instanceof LivingEntity living && espMode.getValue() == ESPMode.Liquid) {
-            renderKQQBlurrySlash(stack, living);
+        if (target == null) return;
+        
+        // --- ĐẦY ĐỦ CÁC CHẾ ĐỘ ESP ---
+        switch (esp.getValue()) {
+            case Liquid -> {
+                if (target instanceof LivingEntity living) renderKQQSlash(stack, living);
+            }
+            case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+            case NurikZapen -> CaptureMark.render(target);
+            case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, false, 1.0f, target);
+            case CelkaPasta -> Render3DEngine.drawOldTargetEsp(stack, target);
         }
     }
 
-    private void renderKQQBlurrySlash(MatrixStack stack, LivingEntity entity) {
+    private void renderKQQSlash(MatrixStack stack, LivingEntity entity) {
         slashAnim += slashSpeed.getValue() * 15f;
-        
-        // Nội suy tọa độ để ESP không bị lag theo mục tiêu
         double x = entity.prevX + (entity.getX() - entity.prevX) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getX();
         double y = entity.prevY + (entity.getY() - entity.prevY) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getY() + entity.getHeight() / 2;
         double z = entity.prevZ + (entity.getZ() - entity.prevZ) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getZ();
 
-        Color color = new Color(slashColor.getValue().getColor());
+        Color c = new Color(slashColor.getValue().getColor());
         stack.push();
         stack.translate(x, y, z);
-        
-        // HIỆU ỨNG DẸT: Trục Y mỏng (0.15) tạo cảm giác lưỡi kiếm vụt qua mờ ảo
-        stack.scale(1.0f, 0.15f, 1.0f); 
+        stack.scale(1.0f, 0.15f, 1.0f); // Mỏng dẹt chuẩn KQQ
 
-        // Vẽ 2 tầng vệt chém đan chéo (Cross-Slash)
-        drawArc(stack, slashAnim, slashSize.getValue(), color, 45f);
-        drawArc(stack, -slashAnim * 0.85f, slashSize.getValue() * 0.9f, color, -45f);
-        
+        drawArc(stack, slashAnim, slashSize.getValue(), c, 45f);
+        drawArc(stack, -slashAnim * 0.8f, slashSize.getValue() * 0.9f, c, -45f);
         stack.pop();
     }
 
@@ -136,30 +126,21 @@ public class Aura extends Module {
         
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder buffer = tessellator.getBuffer();
-
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableCull();
 
         buffer.begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
-        
-        // Vẽ cung 160 độ để tạo độ "vút" (Slash trail)
         for (int i = 0; i <= 160; i += 8) {
             float angle = (float) Math.toRadians(i);
             float cos = (float) Math.cos(angle) * radius;
             float sin = (float) Math.sin(angle) * radius;
-            
-            // Đuôi mờ dần về cuối (Alpha Gradient)
             int alpha = (int) (color.getAlpha() * (1.0f - (i / 160.0f)));
             
-            // Vẽ dải Neon Glow: Đỉnh dưới đậm, đỉnh trên tàng hình (Alpha 0)
             buffer.vertex(matrix, cos, -0.1f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha).next();
-            buffer.vertex(matrix, cos, 0.7f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0).next();
+            buffer.vertex(matrix, cos, 0.8f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0).next();
         }
-        
-        // FIX LỖI BUILD: Render chuẩn 1.20+
         BufferRenderer.drawWithGlobalProgram(buffer.end());
-        
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
         stack.pop();
@@ -169,20 +150,19 @@ public class Aura extends Module {
         List<LivingEntity> list = new CopyOnWriteArrayList<>();
         for (Entity ent : mc.world.getEntities()) {
             if (!(ent instanceof LivingEntity living) || ent == mc.player || !ent.isAlive()) continue;
-            
-            // Lọc Elytra Target (Có thể Set Bind trong menu)
             if (elytraTarget.getValue() && !living.isFallFlying()) continue;
-            
             if (mc.player.distanceTo(ent) <= attackRange.getValue()) list.add(living);
         }
         target = list.stream().min(Comparator.comparing(e -> mc.player.distanceTo(e))).orElse(null);
     }
 
-    // --- ENUMS & CLASSES HỆ THỐNG ---
+    // --- ENUMS BẮT BUỘC ĐỂ FIX LỖI BUILD AUTO CRYSTAL ---
     public void pause() { pauseTimer.reset(); }
     public enum SprintMode { None, Keep }
-    public enum ESPMode { Off, Liquid }
+    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Ghost, Liquid }
+    public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    public enum Switch { Normal, None, Silent }
     
     public static class Position {
         public double x, y, z;
