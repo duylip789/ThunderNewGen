@@ -106,7 +106,6 @@ public class ModuleManager implements IManager {
     public static AspectRatio aspectRatio = new AspectRatio();
     public static ClientSpoof clientSpoof = new ClientSpoof();
     public static LegitHelper legitHelper = new LegitHelper();
-    public static AutoAnchor autoAnchor = new AutoAnchor();
     public static WaterSpeed waterSpeed = new WaterSpeed();
     public static TriggerBot triggerBot = new TriggerBot();
     public static TPSCounter tpsCounter = new TPSCounter();
