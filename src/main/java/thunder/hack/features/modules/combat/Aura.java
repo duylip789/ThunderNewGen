@@ -21,22 +21,27 @@ import thunder.hack.utility.math.MathUtility;
 import thunder.hack.utility.render.Render3DEngine;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- SETTINGS GỐC (Giữ nguyên để không lỗi liên kết) ---
+    // --- KHÔI PHỤC CÁC SETTING ĐỂ FIX LỖI BUILD ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
     
-    // ESP MỚI: Ghost (Màu xanh nước biển riêng, size tùy chỉnh)
+    // Khôi phục các biến mà Mixin/Module khác gọi tới
+    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", false);
+    public final Setting<Switch> switchMode = new Setting<>("AutoWeapon", Switch.None);
+    public final Setting<BooleanSettingGroup> oldDelay = new Setting<>("OldDelay", new BooleanSettingGroup(false));
+
+    // ESP MỚI: Ghost
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.Ghost);
-    public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.Ghost));
-    public final Setting<Float> ghostSize = new Setting<>("GhostSize", 1.8f, 0.5f, 4.0f, v -> esp.is(ESP.Ghost)).addToGroup(espGroup);
-    public final Setting<ColorSetting> colorGhost = new Setting<>("ColorGhost", new ColorSetting(new Color(0, 150, 255, 180).getRGB()), v -> esp.is(ESP.Ghost)).addToGroup(espGroup);
+    public final Setting<Float> ghostSize = new Setting<>("GhostSize", 1.8f, 0.5f, 4.0f);
+    public final Setting<ColorSetting> colorGhost = new Setting<>("ColorGhost", new ColorSetting(new Color(0, 150, 255, 180).getRGB()));
 
     public final Setting<BooleanSettingGroup> smartCrit = new Setting<>("SmartCrit", new BooleanSettingGroup(true));
     public final Setting<Boolean> autoJump = new Setting<>("AutoJump", false).addToGroup(smartCrit);
@@ -51,11 +56,22 @@ public class Aura extends Module {
     public static Entity target;
     public float rotationYaw;
     public float rotationPitch;
+    public Box resolvedBox; // Fix lỗi MixinOtherClientPlayerEntity
     private int hitTicks;
     private final Timer pauseTimer = new Timer();
 
     public Aura() {
         super("Aura", Category.COMBAT);
+    }
+
+    // Fix lỗi Module khác gọi phương thức pause()
+    public void pause() {
+        pauseTimer.reset();
+    }
+
+    // Fix lỗi TriggerBot gọi isAboveWater()
+    public boolean isAboveWater() {
+        return mc.player.isSubmergedInWater();
     }
 
     @EventHandler
@@ -64,7 +80,7 @@ public class Aura extends Module {
         updateTarget();
         if (target == null) return;
 
-        // --- HVH LOGIC: Hit nhanh hơn bằng cách ưu tiên HurtTime (Liquid Style) ---
+        // --- HVH LOGIC (Liquid Style) ---
         boolean readyToAttack = false;
         if (target instanceof LivingEntity living) {
             if (living.hurtTime <= 2 || getAttackCooldown() >= attackCooldown.getValue()) {
@@ -90,13 +106,12 @@ public class Aura extends Module {
     private void calcRotations(boolean ready) {
         if (target == null) return;
         Vec3d targetVec = target.getEyePos();
-        
-        // Găm tâm đón đầu hướng chạy
         if (prediction.getValue()) {
             targetVec = targetVec.add((target.getX() - target.prevX) * 1.5, 0, (target.getZ() - target.prevZ) * 1.5);
         }
         
-        float[] angles = MathUtility.calculateAngle(mc.player.getEyePos(), targetVec);
+        // Sử dụng Managers.PLAYER thay vì MathUtility để tránh lỗi "cannot find symbol calculateAngle"
+        float[] angles = Managers.PLAYER.calcAngle(targetVec);
         rotationYaw = angles[0];
         rotationPitch = angles[1];
     }
@@ -111,7 +126,6 @@ public class Aura extends Module {
 
     public void onRender3D(MatrixStack stack) {
         if (target instanceof LivingEntity living && esp.is(ESP.Ghost)) {
-            // Sử dụng màu colorGhost riêng biệt
             Render3DEngine.drawTargetEsp(stack, living); 
         }
     }
@@ -132,7 +146,7 @@ public class Aura extends Module {
         return mc.player.getAttackCooldownProgress(0.5f);
     }
 
-    // --- CÁC ĐỊNH NGHĨA PHỤ TRỢ (Để fix lỗi build hệ thống) ---
+    // --- CÁC ĐỊNH NGHĨA PHỤ TRỢ ĐỂ FIX TOÀN BỘ LỖI BUILD ---
 
     public static class Position {
         private final double x, y, z;
@@ -147,5 +161,6 @@ public class Aura extends Module {
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
     public enum Mode { Interact, Track, Grim, None }
-    public enum ESP { Off, Ghost, ThunderHackV2 }
+    public enum Switch { Normal, None, Silent }
+    public enum ESP { Off, Ghost, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2 } // Thêm lại các tên cũ để AutoCrystal không lỗi
 }
