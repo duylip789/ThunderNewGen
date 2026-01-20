@@ -9,6 +9,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.SlimeEntity;
 import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.*;
@@ -30,23 +31,26 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- SETTINGS ---
+    // --- SETTINGS HỆ THỐNG ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 0.5f, 0f, 3.0f);
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.95f, 0.5f, 1f);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
 
-    // --- ESP KHANGQUIQUAI 100% ---
+    // --- ESP KHANGQUIQUAI (100% GIỐNG ẢNH) ---
     public final Setting<ColorSetting> slashColor = new Setting<>("SlashColor", new ColorSetting(new Color(255, 255, 255, 255).getRGB()));
     public final Setting<Float> slashSize = new Setting<>("SlashSize", 1.5f, 0.5f, 3.0f);
     public final Setting<Float> slashSpeed = new Setting<>("SlashSpeed", 1.5f, 0.1f, 4.0f);
 
+    // --- TARGETS SINH VẬT ---
     public final Setting<SettingGroup> targets = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> players = new Setting<>("Players", true).addToGroup(targets);
     public final Setting<Boolean> mobs = new Setting<>("Mobs", true).addToGroup(targets);
     public final Setting<Boolean> animals = new Setting<>("Animals", false).addToGroup(targets);
+    public final Setting<Boolean> villagers = new Setting<>("Villagers", false).addToGroup(targets);
     public final Setting<Boolean> slimes = new Setting<>("Slimes", false).addToGroup(targets);
 
+    // --- BIẾN TOÀN CỤC ---
     public static Entity target;
     public float rotationYaw, rotationPitch;
     private float slashAnim;
@@ -55,6 +59,7 @@ public class Aura extends Module {
 
     public Aura() { super("Aura", Category.COMBAT); }
 
+    // Phương thức fix lỗi TriggerBot & FakePlayer
     public float getAttackCooldown() {
         return mc.player.getAttackCooldownProgress(0.5f);
     }
@@ -64,12 +69,14 @@ public class Aura extends Module {
         updateTarget();
         if (target == null) return;
 
+        // ÉP FULL CRIT (DAMAGE TO NHẤT)
         boolean isFalling = mc.player.fallDistance > 0.05f && !mc.player.isOnGround();
+        
         if (isFalling || mc.player.getAbilities().creativeMode) {
             if (getAttackCooldown() >= attackCooldown.getValue()) {
                 if (hitTicks <= 0) {
                     attack();
-                    hitTicks = 9;
+                    hitTicks = 9; // Hit nhanh như Liquid
                 }
             }
         }
@@ -105,7 +112,7 @@ public class Aura extends Module {
     }
 
     private void renderKhangSlash(MatrixStack stack, LivingEntity entity) {
-        slashAnim += slashSpeed.getValue() * 10f;
+        slashAnim += slashSpeed.getValue() * 12f;
         double x = entity.prevX + (entity.getX() - entity.prevX) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getX();
         double y = entity.prevY + (entity.getY() - entity.prevY) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getY() + entity.getHeight() / 2;
         double z = entity.prevZ + (entity.getZ() - entity.prevZ) * Render3DEngine.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getZ();
@@ -114,7 +121,7 @@ public class Aura extends Module {
         stack.push();
         stack.translate(x, y, z);
         drawSlashLayer(stack, slashAnim, slashSize.getValue(), color, 45f);
-        drawSlashLayer(stack, -slashAnim * 0.8f, slashSize.getValue() * 0.85f, color, -45f);
+        drawSlashLayer(stack, -slashAnim * 0.85f, slashSize.getValue() * 0.9f, color, -45f);
         stack.pop();
     }
 
@@ -124,7 +131,6 @@ public class Aura extends Module {
         stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(tilt));
         Matrix4f matrix = stack.peek().getPositionMatrix();
         
-        // Fix lỗi: BufferBuilder và Tessellator chuẩn 1.20+
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder buffer = tessellator.getBuffer();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
@@ -141,7 +147,7 @@ public class Aura extends Module {
             buffer.vertex(matrix, cos, -0.05f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), alpha).next();
             buffer.vertex(matrix, cos, 0.15f, sin).color(color.getRed(), color.getGreen(), color.getBlue(), 0).next();
         }
-        tessellator.draw(); // Fix lỗi getBuffer().end()
+        tessellator.draw();
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
         stack.pop();
@@ -154,13 +160,14 @@ public class Aura extends Module {
             if (ent instanceof PlayerEntity && !players.getValue()) continue;
             if (ent instanceof HostileEntity && !mobs.getValue()) continue;
             if (ent instanceof AnimalEntity && !animals.getValue()) continue;
+            if (ent instanceof VillagerEntity && !villagers.getValue()) continue;
             if (ent instanceof SlimeEntity && !slimes.getValue()) continue;
             if (mc.player.distanceTo(ent) <= attackRange.getValue() + aimRange.getValue()) list.add(living);
         }
         target = list.stream().min(Comparator.comparing(e -> mc.player.distanceTo(e))).orElse(null);
     }
 
-    // --- FIX 18 LỖI BUILD CHO MIXIN ---
+    // --- ĐẦY ĐỦ ENUMS & CLASSES ĐỂ FIX 100% LỖI BUILD ---
     public void pause() { pauseTimer.reset(); }
     public boolean isAboveWater() { return mc.player.isSubmergedInWater(); }
     public Box resolvedBox;
@@ -170,13 +177,16 @@ public class Aura extends Module {
 
     public static class Position {
         private double x, y, z;
+        private int ticks;
         public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
         public double getX() { return x; }
         public double getY() { return y; }
         public double getZ() { return z; }
+        public boolean shouldRemove() { return ticks++ > ModuleManager.aura.backTicks.getValue(); }
     }
 
     public enum Mode { Interact, Track, Grim, None }
+    public enum Resolver { Off, Advantage, Predictive, BackTrack }
     public enum Switch { Normal, None, Silent }
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, Ghost }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
