@@ -7,37 +7,33 @@ import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
 import thunder.hack.utility.render.Render3DEngine;
-import thunder.hack.utility.render.animation.CaptureMark;
 import java.awt.Color;
 
 public class TargetESP extends Module {
-    public final Setting<Mode> mode = new Setting<>("Mode", Mode.NewGen);
     public final Setting<Color> color = new Setting<>("Color", new Color(255, 80, 80, 180));
 
-    public TargetESP() { super("TargetESP", Category.MOVEMENT); }
-
-    public enum Mode { NewGen, Thunder, Nurik, Celka, Ghosts }
+    public TargetESP() { 
+        super("TargetESP", Category.MOVEMENT); 
+    }
 
     @Override
     public void onRender3D(MatrixStack stack) {
+        // Chỉ vẽ khi Aura có mục tiêu
         if (Aura.target instanceof LivingEntity target) {
-            switch (mode.getValue()) {
-                case NewGen -> renderNewGen(target);
-                case Thunder -> Render3DEngine.drawTargetEsp(stack, target);
-                case Nurik -> CaptureMark.render(target);
-                case Celka -> Render3DEngine.drawOldTargetEsp(stack, target);
-                case Ghosts -> Render3DEngine.renderGhosts(14, 8, 1.8f, 3f, target);
+            Vec3d center = target.getPos().add(0, target.getHeight() / 2f, 0);
+            long time = System.currentTimeMillis();
+
+            for (int i = 0; i < 3; i++) {
+                double rot = Math.toRadians((time / 8 + i * 120) % 360);
+                Vec3d end = center.add(
+                        Math.cos(rot) * 3.2,
+                        Math.sin(rot * 0.5) * 0.6,
+                        Math.sin(rot) * 3.2
+                );
+
+                // Fix: Đã xóa tham số 2.2f để khớp với định nghĩa hàm drawLine(Vec3d, Vec3d, Color)
+                Render3DEngine.drawLine(center, end, new Color(color.getValue().getRGB() & 0xFFFFFF | 0x50000000, true));
             }
         }
     }
-
-    private void renderNewGen(LivingEntity ent) {
-        Vec3d c = ent.getPos().add(0, ent.getHeight() / 2f, 0);
-        for (int i = 0; i < 3; i++) {
-            double r = Math.toRadians((System.currentTimeMillis() / 8 + i * 120) % 360);
-            Vec3d e = c.add(Math.cos(r) * 3.2, Math.sin(r * 0.5) * 0.6, Math.sin(r) * 3.2);
-            Render3DEngine.drawLine(c, e, new Color(color.getValue().getRGB() & 0xFFFFFF | 0x50000000, true), 2.2f);
-        }
-    }
 }
-
