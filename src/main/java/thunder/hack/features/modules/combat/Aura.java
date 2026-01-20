@@ -1,103 +1,58 @@
 package thunder.hack.features.modules.combat;
 
-import baritone.api.BaritoneAPI;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.util.math.MatrixStack; // Thêm lại import này
 import net.minecraft.entity.*;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.*;
-import net.minecraft.network.packet.c2s.play.*;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.*;
-import thunder.hack.ThunderHack;
-import thunder.hack.core.*;
-import thunder.hack.core.manager.client.ModuleManager;
-import thunder.hack.events.impl.*;
+import thunder.hack.core.Managers;
+import thunder.hack.events.impl.PlayerUpdateEvent;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
-import thunder.hack.setting.impl.*;
-import thunder.hack.utility.Timer;
-import thunder.hack.utility.math.MathUtility;
-import thunder.hack.utility.player.*;
-import thunder.hack.utility.render.Render2DEngine;
-import thunder.hack.utility.render.Render3DEngine;
-import java.util.*;
+import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Aura extends Module {
     public final Setting<Float> range = new Setting<>("Range", 3.1f, 1f, 6f);
-    public final Setting<Mode> rotMode = new Setting<>("Rotation", Mode.Track);
-    public final Setting<Switch> autoWep = new Setting<>("Switch", Switch.None);
-    public final Setting<BooleanSettingGroup> crit = new Setting<>("Crit", new BooleanSettingGroup(true));
-    public final Setting<Boolean> shieldBk = new Setting<>("ShieldBreaker", true);
-    public final Setting<Boolean> clientLook = new Setting<>("ClientLook", false);
-    public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
-
     public static Entity target;
-    private float yaw, pitch;
     private int hitTicks;
-    private final Timer pTimer = new Timer();
 
     public Aura() { super("Aura", Category.COMBAT); }
 
     @EventHandler
     public void onUpdate(PlayerUpdateEvent e) {
-        if (mc.player.isUsingItem() || !pTimer.passedMs(1000)) return;
-        target = findTarget();
-        if (target == null) return;
+        target = mc.world.getEntities().stream()
+            .filter(ent -> ent instanceof LivingEntity && ent != mc.player && ent.isAlive() && mc.player.distanceTo(ent) <= range.getValue())
+            .filter(ent -> !(ent instanceof PlayerEntity p) || !Managers.FRIEND.isFriend(p))
+            .min(Comparator.comparingDouble(ent -> mc.player.squaredDistanceTo(ent))).orElse(null);
 
-        if (canAttack()) {
-            shieldBreaker();
-            boolean sprint = Core.serverSprint;
-            if (sprint) mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
-            
-            attack();
-            
-            if (sprint) mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
-        }
-        hitTicks--;
-    }
-
-    private void attack() {
-        int slot = autoWep.getValue() == Switch.Silent ? mc.player.getInventory().selectedSlot : -1;
-        if (autoWep.getValue() != Switch.None) InventoryUtility.getSwordHotBar().switchTo();
-        
-        mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
-        hitTicks = 10;
-        
-        if (slot != -1) InventoryUtility.switchTo(slot);
-    }
-
-    private boolean canAttack() {
-        return hitTicks <= 0 && mc.player.getAttackCooldownProgress(0.5f) >= 0.9f && (mc.player.fallDistance > 0.1 || !crit.getValue().isEnabled());
-    }
-
-    private Entity findTarget() {
-        return mc.world.getEntities().stream()
-            .filter(e -> e instanceof LivingEntity && e != mc.player && e.isAlive() && mc.player.distanceTo(e) <= range.getValue())
-            .filter(e -> !(e instanceof PlayerEntity p) || !Managers.FRIEND.isFriend(p))
-            .min(Comparator.comparingDouble(e -> mc.player.squaredDistanceTo(e))).orElse(null);
-    }
-
-    private void shieldBreaker() {
-        if (shieldBk.getValue() && target instanceof PlayerEntity p && p.isBlocking()) {
-            int axe = InventoryUtility.getAxe().slot();
-            if (axe != -1) {
-                InventoryUtility.switchTo(axe);
-                mc.interactionManager.attackEntity(mc.player, target);
-                mc.player.swingHand(Hand.MAIN_HAND);
-            }
+        if (target != null && mc.player.getAttackCooldownProgress(0.5f) >= 0.9f && hitTicks-- <= 0) {
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+            hitTicks = 10;
         }
     }
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        if (clientLook.getValue() && target != null) {
-            mc.player.setYaw(yaw);
-            mc.player.setPitch(pitch);
-        }
+        // Để trống vì đã chuyển sang TargetESP
     }
 
-    public enum Mode { Track, Grim, None }
-    public enum Sort { LowestDistance, LowestHealth, FOV }
-    public enum Switch { Normal, Silent, None }
+    // --- CÁC ENUM PHẢI GIỮ LẠI ĐỂ KHÔNG LỖI BUILD CÁC FILE KHÁC ---
+    public enum RayTrace { OFF, OnlyTarget, AllEntities }
+    public enum Sort { LowestDistance, HighestDistance, LowestHealth, HighestHealth, LowestDurability, HighestDurability, FOV }
+    public enum Switch { Normal, None, Silent }
+    public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    public enum Mode { Interact, Track, Grim, None }
+    public enum AttackHand { MainHand, OffHand, None }
+    public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2 } // Giữ để AutoCrystal không lỗi
+    public enum AccelerateOnHit { Off, Yaw, Pitch, Both }
+    public enum WallsBypass { Off, V1, V2 }
+
+    public static class Position {
+        public double x, y, z;
+        public int ticks;
+        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
+    }
 }
