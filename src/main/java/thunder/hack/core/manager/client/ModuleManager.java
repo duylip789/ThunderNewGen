@@ -261,7 +261,6 @@ public class ModuleManager implements IManager {
     public static XRay xray = new XRay();
     public static Step step = new Step();
     public static Aura aura = new Aura();
-    public static TargetESP targetESP = new TargetESP();
     public static FOV fov = new FOV();
     public static ESP esp = new ESP();
     public static RPC rpc = new RPC();
