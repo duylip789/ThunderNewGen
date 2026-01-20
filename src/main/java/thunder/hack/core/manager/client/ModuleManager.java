@@ -101,7 +101,6 @@ public class ModuleManager implements IManager {
     public static LagNotifier lagNotifier = new LagNotifier();
     public static BreadCrumbs breadCrumbs = new BreadCrumbs();
     public static AutoRespawn autoRespawn = new AutoRespawn();
-    public static AutoCrystal autoCrystal = new AutoCrystal();
     public static EntitySpeed entitySpeed = new EntitySpeed();
     public static AspectRatio aspectRatio = new AspectRatio();
     public static ClientSpoof clientSpoof = new ClientSpoof();
