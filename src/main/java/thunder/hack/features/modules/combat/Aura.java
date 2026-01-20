@@ -17,21 +17,22 @@ import thunder.hack.setting.impl.ColorSetting;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.setting.Setting;
 import thunder.hack.utility.Timer;
+import thunder.hack.utility.math.MathUtility;
 import thunder.hack.utility.render.Render3DEngine;
 
 import java.awt.Color;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Aura extends Module {
-    // --- SETTINGS ---
+    // --- SETTINGS GỐC (Giữ nguyên để không lỗi liên kết) ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
     
+    // ESP MỚI: Ghost (Màu xanh nước biển riêng, size tùy chỉnh)
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.Ghost);
     public final Setting<SettingGroup> espGroup = new Setting<>("ESPSettings", new SettingGroup(false, 0), v -> esp.is(ESP.Ghost));
     public final Setting<Float> ghostSize = new Setting<>("GhostSize", 1.8f, 0.5f, 4.0f, v -> esp.is(ESP.Ghost)).addToGroup(espGroup);
@@ -57,15 +58,15 @@ public class Aura extends Module {
         super("Aura", Category.COMBAT);
     }
 
-    @Override
-    public void onUpdate() {
+    @EventHandler
+    public void onUpdate(PlayerUpdateEvent e) {
         if (!pauseTimer.passedMs(500)) return;
         updateTarget();
         if (target == null) return;
 
+        // --- HVH LOGIC: Hit nhanh hơn bằng cách ưu tiên HurtTime (Liquid Style) ---
         boolean readyToAttack = false;
         if (target instanceof LivingEntity living) {
-            // Logic hit nhanh: Ưu tiên nhịp HurtTime giống Liquid
             if (living.hurtTime <= 2 || getAttackCooldown() >= attackCooldown.getValue()) {
                 readyToAttack = true;
             }
@@ -89,9 +90,12 @@ public class Aura extends Module {
     private void calcRotations(boolean ready) {
         if (target == null) return;
         Vec3d targetVec = target.getEyePos();
+        
+        // Găm tâm đón đầu hướng chạy
         if (prediction.getValue()) {
             targetVec = targetVec.add((target.getX() - target.prevX) * 1.5, 0, (target.getZ() - target.prevZ) * 1.5);
         }
+        
         float[] angles = MathUtility.calculateAngle(mc.player.getEyePos(), targetVec);
         rotationYaw = angles[0];
         rotationPitch = angles[1];
@@ -107,6 +111,7 @@ public class Aura extends Module {
 
     public void onRender3D(MatrixStack stack) {
         if (target instanceof LivingEntity living && esp.is(ESP.Ghost)) {
+            // Sử dụng màu colorGhost riêng biệt
             Render3DEngine.drawTargetEsp(stack, living); 
         }
     }
@@ -127,22 +132,19 @@ public class Aura extends Module {
         return mc.player.getAttackCooldownProgress(0.5f);
     }
 
-    // --- PHẦN QUAN TRỌNG: THÊM LẠI CÁC CLASS/ENUM ĐỂ FIX LỖI BUILD ---
+    // --- CÁC ĐỊNH NGHĨA PHỤ TRỢ (Để fix lỗi build hệ thống) ---
 
     public static class Position {
         private final double x, y, z;
         private int ticks;
-
-        public Position(double x, double y, double z) {
-            this.x = x; this.y = y; this.z = z;
-        }
-
+        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
         public boolean shouldRemove() { return ticks++ > ModuleManager.aura.backTicks.getValue(); }
         public double getX() { return x; }
         public double getY() { return y; }
         public double getZ() { return z; }
     }
 
+    public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Resolver { Off, Advantage, Predictive, BackTrack }
     public enum Mode { Interact, Track, Grim, None }
     public enum ESP { Off, Ghost, ThunderHackV2 }
