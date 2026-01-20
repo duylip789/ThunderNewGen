@@ -1,6 +1,8 @@
 plugins {
-	id 'fabric-loom' version '1.7-SNAPSHOT'
-	id 'maven-publish'
+    id 'fabric-loom' version '1.7-SNAPSHOT'
+    id 'maven-publish'
+    // Plugin giúp đóng gói tất cả vào 1 file duy nhất cho Mobile
+    id 'com.github.johnrengelman.shadow' version '8.1.1' 
 }
 
 sourceCompatibility = JavaVersion.VERSION_21
@@ -11,99 +13,85 @@ version = project.mod_version
 group = project.maven_group
 
 loom {
-	accessWidenerPath = file("src/main/resources/thunderhack.accesswidener")
+    accessWidenerPath = file("src/main/resources/thunderhack.accesswidener")
 }
 
 repositories {
-	maven {
-		name = "jitpack.io"
-		url = "https://jitpack.io"
-	}
-	maven {
-		name = 'swt-repo'
-		url = "https://maven-eclipse.github.io/maven"
-	}
-	maven {
-		name = "meteor-maven"
-		url = "https://maven.meteordev.org/releases"
-	}
-	maven {
-		name = "meteor-maven-snapshots"
-		url = "https://maven.meteordev.org/snapshots"
-	}
-
-	mavenCentral()
+    maven { name = "jitpack.io"; url = "https://jitpack.io" }
+    maven { name = 'swt-repo'; url = "https://maven-eclipse.github.io/maven" }
+    maven { name = "meteor-maven"; url = "https://maven.meteordev.org/releases" }
+    maven { name = "meteor-maven-snapshots"; url = "https://maven.meteordev.org/snapshots" }
+    mavenCentral()
 }
 
+// Định nghĩa cấu hình Shadow
 configurations {
-	libImpl
-	modImpl
+    shadow
+    implementation.extendsFrom shadow
+    libImpl
+    modImpl
 }
 
 dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-	libImpl("meteordevelopment:orbit:${project.orbit_version}")
+    // Gom thư viện Orbit và Netty vào file Jar (Cực kỳ quan trọng cho Zaith Launcher)
+    shadow("meteordevelopment:orbit:${project.orbit_version}")
+    shadow("io.netty:netty-handler-proxy:${project.netty_version}") { transitive = false }
+    shadow("io.netty:netty-codec-socks:${project.netty_version}") { transitive = false }
 
-	modCompileOnly "meteordevelopment:baritone:1.21-SNAPSHOT"
+    modCompileOnly "meteordevelopment:baritone:1.21-SNAPSHOT"
 
-	libImpl("io.netty:netty-handler-proxy:${project.netty_version}") { transitive = false }
-	libImpl("io.netty:netty-codec-socks:${project.netty_version}") { transitive = false }
+    // Xử lý các thư viện khác
+    configurations.libImpl.dependencies.each { implementation(it) }
+    configurations.modImpl.dependencies.each {
+        modImplementation(it)
+        include(it)
+    }
+}
 
-	configurations.libImpl.dependencies.each {
-		implementation(it)
-	}
+// Cấu hình đóng gói ShadowJar
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier.set('shaded')
+    
+    // Xóa các rác thải chữ ký số để Zaith Launcher không báo lỗi bảo mật
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+}
 
-	configurations.modImpl.dependencies.each {
-		modImplementation(it)
-		include(it)
-	}
+// Gắn ShadowJar vào quá trình Remap của Fabric
+remapJar {
+    dependsOn shadowJar
+    inputFile.set(shadowJar.archiveFile)
+    archiveFileName.set("${archivesBaseName}-${version}-all.jar")
 }
 
 processResources {
-	inputs.property "version", project.version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version
-	}
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+    it.options.release = 21
 }
 
 java {
-	withSourcesJar()
+    withSourcesJar()
 }
 
 jar {
-	from("LICENSE") {
-		rename { "${it}_${project.archivesBaseName}"}
-	}
-	from {
-		configurations.libImpl.collect { it.isDirectory() ? it : zipTree(it) }
-	}
-	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
-
-	manifest {
-		attributes(
-				'Implementation-Title': project.name,
-				'Implementation-Version': project.version,
-				'Built-By': System.getProperty('user.name'),
-		)
-	}
+    from("LICENSE") {
+        rename { "${it}_${project.archivesBaseName}"}
+    }
+    duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 }
 
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			from components.java
-		}
-	}
-
-	repositories {
-	}
-}
+// Khi bấm Build, ShadowJar sẽ tự động chạy
+build.dependsOn shadowJar
