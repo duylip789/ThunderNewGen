@@ -131,7 +131,6 @@ public class TargetHud extends HudElement {
     }
 
     private void getTarget() {
-            }
         } else if (Aura.target != null) {
             if (Aura.target instanceof LivingEntity) {
                 target = (LivingEntity) Aura.target;
@@ -139,8 +138,6 @@ public class TargetHud extends HudElement {
             } else {
                 target = null;
                 direction = false;
-            }
-          
             }
         } else if (mc.currentScreen instanceof ChatScreen || mc.currentScreen instanceof HudEditorGui) {
             target = mc.player;
