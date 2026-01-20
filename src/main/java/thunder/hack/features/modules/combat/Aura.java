@@ -98,8 +98,8 @@ public class Aura extends Module {
             switch (esp.getValue()) {
                 case Liquid -> renderKQQSlash(stack, living);
                 case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-                // FIX: Sửa lại tham số renderGhosts để khớp với kiểu dữ liệu float/int/boolean
-                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 0.5f, 1.0f, false, target);
+                // FIX: Đổi 0.5f thành 1 (int) để tránh lỗi biên dịch
+                case ThunderHackV2 -> Render3DEngine.renderGhosts(10, 1, 1.0f, false, target);
                 case NurikZapen -> CaptureMark.render(target);
             }
         }
@@ -114,7 +114,7 @@ public class Aura extends Module {
         Color color = new Color(slashColor.getValue().getColor());
         stack.push();
         stack.translate(x, y, z);
-        stack.scale(1.0f, 0.15f, 1.0f); 
+        stack.scale(1.0f, 0.15f, 1.0f); // Chuẩn Liquid Slash dẹt
 
         drawArc(stack, slashAnim, slashSize.getValue(), color, 45f);
         drawArc(stack, -slashAnim * 0.8f, slashSize.getValue() * 0.9f, color, -45f);
