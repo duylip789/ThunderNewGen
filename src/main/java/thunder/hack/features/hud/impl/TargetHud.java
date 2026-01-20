@@ -130,15 +130,11 @@ public class TargetHud extends HudElement {
         context.getMatrices().pop();
     }
 
-    private void getTarget() {
-        } else if (Aura.target != null) {
-            if (Aura.target instanceof LivingEntity) {
-                target = (LivingEntity) Aura.target;
-                direction = true;
-            } else {
-                target = null;
-                direction = false;
-            }
+        private void getTarget() {
+        // Chỉ giữ lại Aura và Preview trong Menu
+        if (Aura.target != null && Aura.target instanceof LivingEntity) {
+            target = (LivingEntity) Aura.target;
+            direction = true;
         } else if (mc.currentScreen instanceof ChatScreen || mc.currentScreen instanceof HudEditorGui) {
             target = mc.player;
             direction = true;
@@ -147,7 +143,8 @@ public class TargetHud extends HudElement {
             if (animation.getAnimationd() < 0.02)
                 target = null;
         }
-    }
+        }
+    
 
     private void renderCelkaPasta(DrawContext context, float health) {
         float hurtPercent = (target.hurtTime) / 6f;
