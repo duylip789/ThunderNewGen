@@ -4,8 +4,10 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -13,6 +15,7 @@ import java.util.Objects;
 import static thunder.hack.features.modules.Module.mc;
 
 public final class PlayerUtility {
+
     public static boolean isInHell() {
         if (mc.world == null) return false;
         return Objects.equals(mc.world.getRegistryKey().getValue().getPath(), "the_nether");
@@ -38,7 +41,6 @@ public final class PlayerUtility {
 
     public static boolean isMining() {
         if (mc.interactionManager == null) return false;
-
         return mc.interactionManager.isBreakingBlock();
     }
 
@@ -51,7 +53,6 @@ public final class PlayerUtility {
 
         return (float) (dx * dx + dy * dy + dz * dz);
     }
-
 
     public static float squaredDistance2d(@NotNull Vec2f point) {
         if (mc.player == null) return 0f;
@@ -78,10 +79,8 @@ public final class PlayerUtility {
         double sensitivity = mc.options.getMouseSensitivity().getValue();
         double value = sensitivity * 0.6 + 0.2;
         double result = Math.pow(value, 3) * 8.0;
-
         return (float) result;
     }
-
 
     public static float squaredDistance2d(double x, double z) {
         if (mc.player == null) return 0f;
@@ -97,19 +96,29 @@ public final class PlayerUtility {
         return (float) (d0 * d0 + d2 * d2);
     }
 
+    // ✅ FIX: dùng raycast vanilla, không Explosion
     public static boolean canSee(Vec3d pos) {
-        Vec3d vec3d = new Vec3d(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ());
-        if (pos.distanceTo(vec3d) > 128.0)
-            return false;
-        else
-            return ExplosionUtility.raycast(vec3d, pos, false) == HitResult.Type.MISS;
+        if (mc.world == null || mc.player == null) return false;
+
+        Vec3d eyes = new Vec3d(
+                mc.player.getX(),
+                mc.player.getEyeY(),
+                mc.player.getZ()
+        );
+
+        HitResult result = mc.world.raycast(new RaycastContext(
+                eyes,
+                pos,
+                RaycastContext.ShapeType.COLLIDER,
+                RaycastContext.FluidHandling.NONE,
+                mc.player
+        ));
+
+        return result.getType() == HitResult.Type.MISS;
     }
 
     public static boolean isFalling() {
-        if (mc.player == null) {
-            return false;
-        }
-
+        if (mc.player == null) return false;
         return !mc.player.isOnGround() && !mc.player.isCreative() && mc.player.getVelocity().y < 0;
     }
 }
