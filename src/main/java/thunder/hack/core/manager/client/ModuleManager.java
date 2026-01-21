@@ -63,7 +63,6 @@ public class ModuleManager implements IManager {
     public static Notifications notifications = new Notifications();
     public static NoEntityTrace noEntityTrace = new NoEntityTrace();
     public static MessageAppend messageAppend = new MessageAppend();
-    public static EntityControl entityControl = new EntityControl();
     public static ElytraReplace elytraReplace = new ElytraReplace();
     public static ChorusExploit chorusExploit = new ChorusExploit();
     public static AntiServerAdd antiServerAdd = new AntiServerAdd();
@@ -101,7 +100,6 @@ public class ModuleManager implements IManager {
     public static LagNotifier lagNotifier = new LagNotifier();
     public static BreadCrumbs breadCrumbs = new BreadCrumbs();
     public static AutoRespawn autoRespawn = new AutoRespawn();
-    public static EntitySpeed entitySpeed = new EntitySpeed();
     public static AspectRatio aspectRatio = new AspectRatio();
     public static ClientSpoof clientSpoof = new ClientSpoof();
     public static WaterSpeed waterSpeed = new WaterSpeed();
