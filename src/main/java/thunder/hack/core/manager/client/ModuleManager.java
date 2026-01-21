@@ -113,7 +113,6 @@ public class ModuleManager implements IManager {
     public static ModuleList moduleList = new ModuleList();
     public static KillEffect killEffect = new KillEffect();
     public static JumpCircle jumpCircle = new JumpCircle();
-    public static HoleAnchor holeAnchor = new HoleAnchor();
     public static Fullbright fullbright = new Fullbright();
     public static FpsCounter fpsCounter = new FpsCounter();
     public static FakePlayer fakePlayer = new FakePlayer();
@@ -167,7 +166,6 @@ public class ModuleManager implements IManager {
     public static NameTags nameTags = new NameTags();
     public static LongJump longJump = new LongJump();
     public static KeyBinds keyBinds = new KeyBinds();
-    public static HoleSnap holeSnap = new HoleSnap();
     public static ExtraTab extraTab = new ExtraTab();
     public static ClickGui clickGui = new ClickGui();
     public static AutoTrap autoTrap = new AutoTrap();
