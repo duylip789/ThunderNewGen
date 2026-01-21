@@ -4,7 +4,6 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.command.CommandSource;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import thunder.hack.features.cmd.Command;
 
 import static com.mojang.brigadier.Command.SINGLE_SUCCESS;
@@ -25,10 +24,11 @@ public class BenchMarkCommand extends Command {
                 BlockPos playerPos = BlockPos.ofFloored(mc.player.getPos());
                 int r = 6;
 
+                // CPU stress test (no explosion)
                 for (int x = playerPos.getX() - r; x <= playerPos.getX() + r; x++)
                     for (int y = playerPos.getY() - r; y <= playerPos.getY() + r; y++)
                         for (int z = playerPos.getZ() - r; z <= playerPos.getZ() + r; z++) {
-                            float dmg = ExplosionUtility.getExplosionDamage(new Vec3d(x, y, z), mc.player, false);
+                            double t = Math.sqrt(x * x + y * y + z * z);
                         }
 
                 time = System.currentTimeMillis() - time;
