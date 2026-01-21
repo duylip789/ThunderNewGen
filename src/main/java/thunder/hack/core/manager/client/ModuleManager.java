@@ -209,7 +209,6 @@ public class ModuleManager implements IManager {
     public static FastUse fastUse = new FastUse();
     public static BowSpam bowSpam = new BowSpam();
     public static BoatFly boatFly = new BoatFly();
-    public static Blocker blocker = new Blocker();
     public static AutoWeb autoWeb = new AutoWeb();
     public static AntiWeb antiWeb = new AntiWeb();
     public static AntiBot antiBot = new AntiBot();
