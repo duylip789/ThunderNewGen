@@ -79,7 +79,6 @@ public class ModuleManager implements IManager {
     public static NoCameraClip noCameraClip = new NoCameraClip();
     public static ItemScroller itemScroller = new ItemScroller();
     public static HitParticles hitParticles = new HitParticles();
-    public static ElytraRecast elytraRecast = new ElytraRecast();
     public static EbatteSratte ebatteSratte = new EbatteSratte();
     public static ChestStealer chestStealer = new ChestStealer();
     public static AutoTpAccept autoTpAccept = new AutoTpAccept();
