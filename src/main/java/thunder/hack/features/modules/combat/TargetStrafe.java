@@ -165,4 +165,4 @@ public class TargetStrafe extends Module {
     private enum Boost {
         None, Elytra, Damage
     }
-}
+                }
