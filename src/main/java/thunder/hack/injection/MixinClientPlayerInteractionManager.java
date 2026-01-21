@@ -35,86 +35,107 @@ public class MixinClientPlayerInteractionManager {
     @Shadow
     private int blockBreakingCooldown;
 
+    /* ================= INTERACT BLOCK ================= */
+
     @Inject(method = "interactBlock", at = @At("HEAD"), cancellable = true)
-    private void interactBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+    private void interactBlock(ClientPlayerEntity player, Hand hand,
+                               BlockHitResult hitResult,
+                               CallbackInfoReturnable<ActionResult> cir) {
+
         Block bs = mc.world.getBlockState(hitResult.getBlockPos()).getBlock();
+
         if (ModuleManager.noInteract.isEnabled() && (
                 bs == Blocks.CHEST ||
-                        bs == Blocks.TRAPPED_CHEST ||
-                        bs == Blocks.FURNACE ||
-                        bs == Blocks.ANVIL ||
-                        bs == Blocks.CRAFTING_TABLE ||
-                        bs == Blocks.HOPPER ||
-                        bs == Blocks.JUKEBOX ||
-                        bs == Blocks.NOTE_BLOCK ||
-                        bs == Blocks.ENDER_CHEST ||
-                        bs == Blocks.DISPENSER ||
-                        bs == Blocks.DROPPER ||
-                        bs instanceof ShulkerBoxBlock ||
-                        bs instanceof FenceBlock ||
-                        bs instanceof FenceGateBlock ||
-                        bs instanceof TrapdoorBlock)
+                bs == Blocks.TRAPPED_CHEST ||
+                bs == Blocks.FURNACE ||
+                bs == Blocks.ANVIL ||
+                bs == Blocks.CRAFTING_TABLE ||
+                bs == Blocks.HOPPER ||
+                bs == Blocks.JUKEBOX ||
+                bs == Blocks.NOTE_BLOCK ||
+                bs == Blocks.ENDER_CHEST ||
+                bs == Blocks.DISPENSER ||
+                bs == Blocks.DROPPER ||
+                bs instanceof ShulkerBoxBlock ||
+                bs instanceof FenceBlock ||
+                bs instanceof FenceGateBlock ||
+                bs instanceof TrapdoorBlock)
                 && (ModuleManager.aura.isEnabled() || !NoInteract.onlyAura.getValue())) {
+
             cir.setReturnValue(ActionResult.PASS);
         }
 
-        if(mc.player != null && ModuleManager.antiBallPlace.isEnabled()
-                && ((mc.player.getOffHandStack().getItem() == Items.PLAYER_HEAD && hand == Hand.OFF_HAND) || (mc.player.getMainHandStack().getItem() == Items.PLAYER_HEAD && hand == Hand.MAIN_HAND)))
+        if (mc.player != null && ModuleManager.antiBallPlace.isEnabled()
+                && ((mc.player.getOffHandStack().getItem() == Items.PLAYER_HEAD && hand == Hand.OFF_HAND)
+                || (mc.player.getMainHandStack().getItem() == Items.PLAYER_HEAD && hand == Hand.MAIN_HAND))) {
+
             cir.setReturnValue(ActionResult.PASS);
-    }
-
-    @Redirect(method = "updateBlockBreakingProgress", at = @At(value = "FIELD", target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;blockBreakingCooldown:I", opcode = Opcodes.GETFIELD, ordinal = 0))
-    public int updateBlockBreakingProgressHook(ClientPlayerInteractionManager clientPlayerInteractionManager) {
-        return ModuleManager.speedMine.isEnabled() ? 0 : this.blockBreakingCooldown;
-    }
-
-    @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"), cancellable = true)
-    public void updateBlockBreakingProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
-        if (ModuleManager.speedMine.isEnabled() && ModuleManager.speedMine.mode.getValue() == SpeedMine.Mode.Packet) {
-            cir.setReturnValue(false);
         }
     }
+
+    /* ================= BLOCK BREAK COOLDOWN ================= */
+
+    @Redirect(
+            method = "updateBlockBreakingProgress",
+            at = @At(
+                    value = "FIELD",
+                    target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;blockBreakingCooldown:I",
+                    opcode = Opcodes.GETFIELD,
+                    ordinal = 0
+            )
+    )
+    private int updateBlockBreakingProgressHook(ClientPlayerInteractionManager manager) {
+        // SpeedMine đã xoá → giữ vanilla
+        return this.blockBreakingCooldown;
+    }
+
+    /* ================= ATTACK BLOCK EVENT ================= */
 
     @Inject(method = "attackBlock", at = @At("HEAD"), cancellable = true)
-    private void attackBlockHook(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
-        if(Module.fullNullCheck()) return;
+    private void attackBlockHook(BlockPos pos, Direction direction,
+                                 CallbackInfoReturnable<Boolean> cir) {
+
+        if (Module.fullNullCheck()) return;
+
         EventAttackBlock event = new EventAttackBlock(pos, direction);
         ThunderHack.EVENT_BUS.post(event);
-        if (event.isCancelled())
+
+        if (event.isCancelled()) {
             cir.setReturnValue(false);
-    }
-
-    /*
-    @Inject(method = "getReachDistance", at = @At("HEAD"), cancellable = true)
-    private void getReachDistanceHook(CallbackInfoReturnable<Float> cir) {
-        if (ModuleManager.reach.isEnabled()) {
-            cir.setReturnValue(Reach.range.getValue());
         }
     }
 
-    @Inject(method = "hasExtendedReach", at = @At("HEAD"), cancellable = true)
-    private void hasExtendedReachHook(CallbackInfoReturnable<Boolean> cir) {
-        if (ModuleManager.reach.isEnabled()) {
-            cir.setReturnValue(true);
-        }
-    }
-     */
+    /* ================= BREAK BLOCK EVENT ================= */
 
     @Inject(method = "breakBlock", at = @At("RETURN"), cancellable = true)
-    public void breakBlockHook(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        if(Module.fullNullCheck()) return;
+    private void breakBlockHook(BlockPos pos,
+                                CallbackInfoReturnable<Boolean> cir) {
+
+        if (Module.fullNullCheck()) return;
+
         EventBreakBlock event = new EventBreakBlock(pos);
         ThunderHack.EVENT_BUS.post(event);
-        if (event.isCancelled())
+
+        if (event.isCancelled()) {
             cir.setReturnValue(false);
+        }
     }
 
+    /* ================= CLICK SLOT EVENT ================= */
+
     @Inject(method = "clickSlot", at = @At("HEAD"), cancellable = true)
-    public void clickSlotHook(int syncId, int slotId, int button, SlotActionType actionType, PlayerEntity player, CallbackInfo ci) {
-        if(Module.fullNullCheck()) return;
+    private void clickSlotHook(int syncId, int slotId, int button,
+                               SlotActionType actionType,
+                               PlayerEntity player,
+                               CallbackInfo ci) {
+
+        if (Module.fullNullCheck()) return;
+
         EventClickSlot event = new EventClickSlot(actionType, slotId, button, syncId);
         ThunderHack.EVENT_BUS.post(event);
-        if (event.isCancelled())
+
+        if (event.isCancelled()) {
             ci.cancel();
+        }
     }
 }
