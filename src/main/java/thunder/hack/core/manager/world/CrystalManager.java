@@ -5,15 +5,17 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import thunder.hack.core.Managers;
 import thunder.hack.core.manager.IManager;
-import thunder.hack.core.manager.client.ModuleManager;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CrystalManager implements IManager {
+
     private final Map<Integer, Long> deadCrystals = new ConcurrentHashMap<>();
     private final Map<Integer, Attempt> attackedCrystals = new ConcurrentHashMap<>();
     private final Map<BlockPos, Attempt> awaitingPositions = new ConcurrentHashMap<>();
+
+    /* ================= ATTACK ================= */
 
     public void onAttack(EndCrystalEntity crystal) {
         setDead(crystal.getId(), System.currentTimeMillis());
@@ -28,10 +30,14 @@ public class CrystalManager implements IManager {
 
     public void update() {
         long time = System.currentTimeMillis();
-        deadCrystals.entrySet().removeIf(entry -> time - entry.getValue() > Managers.SERVER.getPing() * 2L);
-        attackedCrystals.entrySet().removeIf(entry -> entry.getValue().shouldRemove());
-        awaitingPositions.entrySet().removeIf(entry -> entry.getValue().shouldRemove());
+        long ping = Managers.SERVER.getPing();
+
+        deadCrystals.entrySet().removeIf(e -> time - e.getValue() > ping * 2L);
+        attackedCrystals.entrySet().removeIf(e -> e.getValue().shouldRemove());
+        awaitingPositions.entrySet().removeIf(e -> e.getValue().shouldRemove());
     }
+
+    /* ================= DEAD ================= */
 
     public boolean isDead(Integer id) {
         return deadCrystals.containsKey(id);
@@ -41,21 +47,22 @@ public class CrystalManager implements IManager {
         deadCrystals.putIfAbsent(id, deathTime);
     }
 
+    /* ================= ATTACK TRACK ================= */
+
     public boolean isBlocked(Integer id) {
-        return attackedCrystals.containsKey(id) && attackedCrystals.get(id).canSetPosBlocked();
+        return attackedCrystals.containsKey(id);
     }
 
     public void addAttack(EndCrystalEntity entity) {
-        attackedCrystals.compute(entity.getId(), (pos, attempt) -> {
+        attackedCrystals.compute(entity.getId(), (id, attempt) -> {
             if (attempt == null) {
-                return new Attempt(System.currentTimeMillis(), 1, entity.getPos());
-            } else {
-                if (ModuleManager.autoCrystal.breakFailsafe.getValue())
-                    attempt.addAttempt();
-                return attempt;
+                return new Attempt(System.currentTimeMillis(), entity.getPos());
             }
+            return attempt;
         });
     }
+
+    /* ================= PLACE TRACK ================= */
 
     public Map<BlockPos, Attempt> getAwaitingPositions() {
         return awaitingPositions;
@@ -66,58 +73,33 @@ public class CrystalManager implements IManager {
     }
 
     public void addAwaitingPos(BlockPos blockPos) {
-        boolean blocked = ModuleManager.autoCrystal.isPositionBlockedByCrystal(blockPos.up());
-
         awaitingPositions.compute(blockPos, (pos, attempt) -> {
             if (attempt == null) {
-                return new Attempt(System.currentTimeMillis(), 1, blockPos.toCenterPos());
-            } else {
-                if (!blocked && ModuleManager.autoCrystal.placeFailsafe.getValue())
-                    attempt.addAttempt();
-                return attempt;
+                return new Attempt(System.currentTimeMillis(), blockPos.toCenterPos());
             }
+            return attempt;
         });
     }
 
     public boolean isPositionBlocked(BlockPos bp) {
-        return awaitingPositions.containsKey(bp) && awaitingPositions.get(bp).canSetPosBlocked();
+        return awaitingPositions.containsKey(bp);
     }
+
+    /* ================= ATTEMPT ================= */
 
     public class Attempt {
         long time;
-        int attempts;
-        float distance;
         public Vec3d pos;
+        float distance;
 
-        Attempt(long time, int attempts, Vec3d pos) {
+        Attempt(long time, Vec3d pos) {
             this.time = time;
             this.pos = pos;
-            this.attempts = attempts;
-            distance = (float) mc.player.squaredDistanceTo(pos);
-        }
-
-        public Vec3d getPos() {
-            return pos;
-        }
-
-        public long getTime() {
-            return time;
-        }
-
-        public float getDistance() {
-            return distance;
+            this.distance = (float) mc.player.squaredDistanceTo(pos);
         }
 
         public boolean shouldRemove() {
             return Math.abs(distance - mc.player.squaredDistanceTo(pos)) >= 1f;
-        }
-
-        public void addAttempt() {
-            attempts++;
-        }
-
-        public boolean canSetPosBlocked() {
-            return attempts >= Math.max(ModuleManager.autoCrystal.attempts.getValue(), Managers.SERVER.getPing() / 25f);
         }
     }
 }
