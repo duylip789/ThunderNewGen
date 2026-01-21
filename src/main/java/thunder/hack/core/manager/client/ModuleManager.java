@@ -228,7 +228,6 @@ public class ModuleManager implements IManager {
     public static HitBox hitBox = new HitBox();
     public static Flight flight = new Flight();
     public static Coords coords = new Coords();
-    public static Burrow burrow = new Burrow();
     public static AutoEZ autoEZ = new AutoEZ();
     public static AimBot aimBot = new AimBot();
     public static Quiver quiver = new Quiver();
