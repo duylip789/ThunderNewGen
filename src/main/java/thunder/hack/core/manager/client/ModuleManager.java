@@ -130,7 +130,6 @@ public class ModuleManager implements IManager {
     public static GapplesHud gapplesHud = new GapplesHud();
     public static HitBubbles hitBubbles = new HitBubbles();
     public static AutoTrader autoTrader = new AutoTrader();
-    public static KillStats killStats = new KillStats();
     public static AutoAnvil autoAnvil = new AutoAnvil();
     public static CandleHud candleHud = new CandleHud();
     public static Particles particles = new Particles();
@@ -186,13 +185,11 @@ public class ModuleManager implements IManager {
     public static AirPlace airPlace = new AirPlace();
     public static SelfTrap selfTrap = new SelfTrap();
     public static AntiVoid antiVoid = new AntiVoid();
-    public static KillFeed killFeed = new KillFeed();
     public static AutoWalk autoWalk = new AutoWalk();
     public static AutoSign autoSign = new AutoSign();
     public static BlockESP blockESP = new BlockESP();
     public static SafeWalk safeWalk = new SafeWalk();
     public static Windows windows = new Windows();
-    public static Breaker breaker = new Breaker();
     public static AutoEat autoEat = new AutoEat();
     public static AntiAFK antiAFK = new AntiAFK();
     public static SoundFX soundFX = new SoundFX();
