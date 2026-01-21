@@ -103,7 +103,6 @@ public class ModuleManager implements IManager {
     public static EntitySpeed entitySpeed = new EntitySpeed();
     public static AspectRatio aspectRatio = new AspectRatio();
     public static ClientSpoof clientSpoof = new ClientSpoof();
-    public static LegitHelper legitHelper = new LegitHelper();
     public static WaterSpeed waterSpeed = new WaterSpeed();
     public static TriggerBot triggerBot = new TriggerBot();
     public static TPSCounter tpsCounter = new TPSCounter();
@@ -247,7 +246,6 @@ public class ModuleManager implements IManager {
     public static Ghost ghost = new Ghost();
     public static Chams chams = new Chams();
     public static Blink blink = new Blink();
-    public static Phase phase = new Phase();
     public static NoBob noBob = new NoBob();
     public static Jesus jesus = new Jesus();
     public static XRay xray = new XRay();
