@@ -19,6 +19,7 @@ import net.minecraft.world.RaycastContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import thunder.hack.injection.accesors.IClientWorldMixin;
+import thunder.hack.utility.world.ExplosionUtility;
 
 import java.util.*;
 
