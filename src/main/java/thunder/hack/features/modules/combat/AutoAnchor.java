@@ -414,8 +414,8 @@ public final class AutoAnchor extends Module {
 //
          //   return false;
 //
-        if (ModuleManager.holeFill.isEnabled() && !HoleFill.inactivityTimer.passedMs(500))
-            return true;
+     //   if (ModuleManager.holeFill.isEnabled() && !HoleFill.inactivityTimer.passedMs(500))
+            //return true;
 
         if (ModuleManager.aura.isEnabled() && aura.getValue())
             return true;
