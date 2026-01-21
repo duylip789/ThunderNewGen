@@ -23,6 +23,7 @@ import thunder.hack.events.impl.PacketEvent;
 import thunder.hack.events.impl.TotemPopEvent;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
+import thunder.hack.utility.world.ExplosionUtility;
 import thunder.hack.utility.player.InventoryUtility;
 
 import java.util.ArrayList;
@@ -152,4 +153,4 @@ public class FakePlayer extends Module {
 
     private record PlayerState(double x, double y, double z, float yaw, float pitch) {
     }
-}
+                                                          }
