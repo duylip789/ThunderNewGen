@@ -341,20 +341,20 @@ public abstract class Module {
 
         // Predefined categories as static instances
         public static final Category COMBAT = new Category("Combat");
-        public static final Category MISC = new Category("Misc");
-        public static final Category RENDER = new Category("Render");
         public static final Category MOVEMENT = new Category("Movement");
         public static final Category PLAYER = new Category("Player");
+        public static final Category MISC = new Category("Misc");
+        public static final Category RENDER = new Category("Render");
         public static final Category CLIENT = new Category("Client");
         public static final Category HUD = new Category("HUD");
 
         // Initialize predefined categories
         static {
             CATEGORIES.put("Combat", COMBAT);
-            CATEGORIES.put("Misc", MISC);
-            CATEGORIES.put("Render", RENDER);
             CATEGORIES.put("Movement", MOVEMENT);
             CATEGORIES.put("Player", PLAYER);
+            CATEGORIES.put("Misc", MISC);
+            CATEGORIES.put("Render", RENDER);
             CATEGORIES.put("Client", CLIENT);
             CATEGORIES.put("HUD", HUD);
         }
