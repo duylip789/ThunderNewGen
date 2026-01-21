@@ -564,7 +564,7 @@ public class AutoCrystal extends Module {
 
         if (ModuleManager.autoTrap.isEnabled() && !ModuleManager.surround.inactivityTimer.passedMs(500)) return true;
 
-        if (ModuleManager.blocker.isEnabled() && !ModuleManager.surround.inactivityTimer.passedMs(500)) return true;
+       // if (ModuleManager.blocker.isEnabled() && !ModuleManager.surround.inactivityTimer.passedMs(500)) return true;
 
         if (ModuleManager.holeFill.isEnabled() && !HoleFill.inactivityTimer.passedMs(500)) return true;
 
