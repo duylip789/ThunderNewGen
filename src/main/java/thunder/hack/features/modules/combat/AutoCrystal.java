@@ -570,7 +570,7 @@ public class AutoCrystal extends Module {
 
         if (ModuleManager.aura.isEnabled() && Aura.target != null && aura.getValue()) return true;
 
-        return ModuleManager.pistonAura.isEnabled() && pistonAura.getValue();
+        return false;
     }
 
     public void attackCrystal(EndCrystalEntity crystal) {
@@ -998,7 +998,7 @@ public class AutoCrystal extends Module {
 
                 if (ent instanceof ExperienceOrbEntity) continue;
 
-                if (ModuleManager.speedMine.isBlockDrop(ent)) continue;
+                //if (ModuleManager.speedMine.isBlockDrop(ent)) continue;
 
                 if (ent instanceof EndCrystalEntity cr) {
                     if (crystalManager.isDead(cr.getId())) continue;
