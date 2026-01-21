@@ -141,7 +141,6 @@ public class ModuleManager implements IManager {
     public static TunnelEsp tunnelEsp = new TunnelEsp();
     public static TickShift tickShift = new TickShift();
     public static TargetHud targetHud = new TargetHud();
-    public static SpeedMine speedMine = new SpeedMine();
     public static PotionHud potionHud = new PotionHud();
     public static PearlBait pearlBait = new PearlBait();
     public static PacketFly packetFly = new PacketFly();
