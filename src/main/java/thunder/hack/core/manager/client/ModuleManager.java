@@ -66,7 +66,6 @@ public class ModuleManager implements IManager {
     public static EntityControl entityControl = new EntityControl();
     public static ElytraReplace elytraReplace = new ElytraReplace();
     public static ChorusExploit chorusExploit = new ChorusExploit();
-    public static MoreKnockback moreKnockback = new MoreKnockback();
     public static AntiServerAdd antiServerAdd = new AntiServerAdd();
     public static AntiBallPlace antiBallPlace = new AntiBallPlace();
     public static TridentBoost tridentBoost = new TridentBoost();
