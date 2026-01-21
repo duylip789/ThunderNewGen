@@ -11,10 +11,11 @@ import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
 
 public class TargetStrafe extends Module {
-    // Các Setting đúng theo hình ảnh bạn gửi
-    private final Setting<Mode> mode = new Setting<>("Mode", Mode.Collision);
-    private final Setting<Float> speed = new Setting<>("Speed", 0.08f, 0.0f, 1.0f); // Thanh Speed như ảnh
-    private final Setting<Float> distance = new Setting<>("Distance", 2.0f, 0.1f, 5.0f); // Max là 5.0
+    // Để public để Aura và TriggerBot không bị lỗi
+    public final Setting<Mode> mode = new Setting<>("Mode", Mode.Collision);
+    public final Setting<Float> speed = new Setting<>("Speed", 0.08f, 0.0f, 1.0f);
+    public final Setting<Float> distance = new Setting<>("Distance", 2.0f, 0.1f, 5.0f);
+    public final Setting<Boolean> jump = new Setting<>("Jump", true); 
 
     public static boolean switchDir = true;
     private static TargetStrafe instance;
@@ -39,11 +40,8 @@ public class TargetStrafe extends Module {
         return Aura.target != null && ModuleManager.aura.isEnabled();
     }
 
-    // Logic xử lý Collision và tránh hố để mượt như ảnh 2
     public boolean needToSwitch(double x, double z) {
         if (mc.player.horizontalCollision) return true;
-        
-        // Kiểm tra an toàn bề mặt (Avoid Edges)
         BlockPos checkPos = new BlockPos((int)x, (int)mc.player.getY() - 1, (int)z);
         if (mc.world.isAir(checkPos) || mc.world.getBlockState(checkPos).getBlock() == Blocks.LAVA) {
             return true;
@@ -54,7 +52,6 @@ public class TargetStrafe extends Module {
     @EventHandler
     public void onMove(EventMove event) {
         if (canStrafe()) {
-            // Tốc độ di chuyển kết hợp giữa giá trị Speed bạn chỉnh và hiệu ứng thuốc
             double currentSpeed = speed.getValue();
             if (mc.player.hasStatusEffect(StatusEffects.SPEED)) {
                 currentSpeed *= 1.3; 
@@ -62,7 +59,6 @@ public class TargetStrafe extends Module {
 
             double targetX = Aura.target.getX();
             double targetZ = Aura.target.getZ();
-            
             double currentYaw = Math.atan2(mc.player.getZ() - targetZ, mc.player.getX() - targetX);
             double offset = currentSpeed / Math.max(distance.getValue(), mc.player.distanceTo(Aura.target));
             
@@ -70,7 +66,6 @@ public class TargetStrafe extends Module {
             double nextX = targetX + Math.cos(checkYaw) * distance.getValue();
             double nextZ = targetZ + Math.sin(checkYaw) * distance.getValue();
 
-            // Nếu va chạm hoặc gặp hố (Mode Collision hoạt động)
             if (needToSwitch(nextX, nextZ)) {
                 switchDir = !switchDir;
                 checkYaw = currentYaw + (switchDir ? offset : -offset);
@@ -78,7 +73,6 @@ public class TargetStrafe extends Module {
 
             double destX = targetX + Math.cos(checkYaw) * distance.getValue();
             double destZ = targetZ + Math.sin(checkYaw) * distance.getValue();
-
             double diffX = destX - mc.player.getX();
             double diffZ = destZ - mc.player.getZ();
             double dist = Math.hypot(diffX, diffZ);
@@ -93,8 +87,7 @@ public class TargetStrafe extends Module {
 
     @EventHandler
     public void updateValues(EventSync e) {
-        // Tự động nhảy để Crit mượt khi đang Strafe giống ảnh 2
-        if (canStrafe() && mc.player.isOnGround()) {
+        if (canStrafe() && mc.player.isOnGround() && jump.getValue()) {
             mc.player.jump();
         }
     }
@@ -102,7 +95,7 @@ public class TargetStrafe extends Module {
     @EventHandler
     public void onPacketReceive(PacketEvent.Receive e) {
         if (e.getPacket() instanceof PlayerPositionLookS2CPacket) {
-            // Tránh flag khi bị teleport
+            // Reset logic if needed
         }
     }
 
@@ -110,3 +103,4 @@ public class TargetStrafe extends Module {
         Collision
     }
 }
+
