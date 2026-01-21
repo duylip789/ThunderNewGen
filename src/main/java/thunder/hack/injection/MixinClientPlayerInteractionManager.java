@@ -26,7 +26,6 @@ import thunder.hack.events.impl.EventBreakBlock;
 import thunder.hack.events.impl.EventClickSlot;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.player.NoInteract;
-import thunder.hack.features.modules.player.SpeedMine;
 
 import static thunder.hack.features.modules.Module.mc;
 
