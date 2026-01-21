@@ -7,7 +7,6 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.NotNull;
-import thunder.hack.utility.world.ExplosionUtility;
 
 import java.util.Objects;
 
