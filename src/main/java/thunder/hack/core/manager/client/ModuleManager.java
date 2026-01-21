@@ -213,7 +213,6 @@ public class ModuleManager implements IManager {
     public static AutoSex autoSex = new AutoSex();
     public static Tracers tracers = new Tracers();
     public static Parkour parkour = new Parkour();
-    public static ClickTP clickTP = new ClickTP();
     public static XCarry xCarry = new XCarry();
     public static Trails trails = new Trails();
     public static MaceSwap maceSwap = new MaceSwap();
@@ -229,7 +228,6 @@ public class ModuleManager implements IManager {
     public static AimBot aimBot = new AimBot();
     public static NoPush noPush = new NoPush();
     public static UnHook unHook = new UnHook();
-    public static Avoid avoid = new Avoid();
     public static Timer timer = new Timer();
     public static Regen regen = new Regen();
     public static Speed speed = new Speed();
