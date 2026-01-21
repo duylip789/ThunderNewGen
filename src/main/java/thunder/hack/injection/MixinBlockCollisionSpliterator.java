@@ -17,7 +17,7 @@ public abstract class MixinBlockCollisionSpliterator {
     // I hope no one will redirect this
     @Redirect(method = "computeNext", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/BlockView;getBlockState(Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/block/BlockState;"))
     private BlockState computeNextHook(BlockView instance, BlockPos blockPos) {
-        if(!ModuleManager.antiWeb.isEnabled() && !ModuleManager.phase.isEnabled() && !ModuleManager.jesus.isEnabled())
+        if(!ModuleManager.antiWeb.isEnabled() && !ModuleManager.jesus.isEnabled())
             return instance.getBlockState(blockPos);
         EventCollision event = new EventCollision(instance.getBlockState(blockPos), blockPos);
         ThunderHack.EVENT_BUS.post(event);
