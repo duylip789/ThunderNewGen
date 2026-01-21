@@ -193,7 +193,6 @@ public class ModuleManager implements IManager {
     public static AntiAFK antiAFK = new AntiAFK();
     public static SoundFX soundFX = new SoundFX();
     public static KeyPearl keyPearl = new KeyPearl();
-    public static AutoBed autoBed = new AutoBed();
    // public static TNTAura tntAura = new TNTAura();
     public static VoidESP voidESP = new VoidESP();
     public static Tracker tracker = new Tracker();
