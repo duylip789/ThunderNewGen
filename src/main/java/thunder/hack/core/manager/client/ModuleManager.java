@@ -172,7 +172,6 @@ public class ModuleManager implements IManager {
     public static LongJump longJump = new LongJump();
     public static KeyBinds keyBinds = new KeyBinds();
     public static HoleSnap holeSnap = new HoleSnap();
-    public static HoleFill holeFill = new HoleFill();
     public static ExtraTab extraTab = new ExtraTab();
     public static ClickGui clickGui = new ClickGui();
     public static AutoTrap autoTrap = new AutoTrap();
