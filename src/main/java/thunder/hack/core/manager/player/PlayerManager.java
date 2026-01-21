@@ -26,6 +26,7 @@ import thunder.hack.injection.accesors.IClientPlayerEntity;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.utility.Timer;
+import thunder.hack.utility.world.ExplosionUtility;
 import thunder.hack.utility.math.MathUtility;
 
 import java.util.ArrayDeque;
@@ -350,4 +351,5 @@ public class PlayerManager implements IManager {
         double dist = MathHelper.sqrt((float) (difX * difX + difZ * difZ));
         return new float[]{(float) MathHelper.wrapDegrees(Math.toDegrees(Math.atan2(difZ, difX)) - 90.0), (float) MathHelper.wrapDegrees(Math.toDegrees(Math.atan2(difY, dist)))};
     }
-}
+            }
+            
