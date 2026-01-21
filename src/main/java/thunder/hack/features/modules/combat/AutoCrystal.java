@@ -566,8 +566,6 @@ public class AutoCrystal extends Module {
 
        // if (ModuleManager.blocker.isEnabled() && !ModuleManager.surround.inactivityTimer.passedMs(500)) return true;
 
-        if (ModuleManager.holeFill.isEnabled() && !HoleFill.inactivityTimer.passedMs(500)) return true;
-
         if (ModuleManager.aura.isEnabled() && Aura.target != null && aura.getValue()) return true;
 
         return false;
