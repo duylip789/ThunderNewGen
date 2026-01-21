@@ -40,8 +40,6 @@ public class ModuleManager implements IManager {
     public static PortalInventory portalInventory = new PortalInventory();
     public static TotemPopCounter totemPopCounter = new TotemPopCounter();
     public static HotbarReplenish hotbarReplenish = new HotbarReplenish();
-    public static AutoCrystal autoCrystal = new AutoCrystal();
-    public static AutoAnchor autoAnchor = new AutoAnchor();
     public static DurabilityAlert durabilityAlert = new DurabilityAlert();
     public static CrosshairArrows crosshairArrows = new CrosshairArrows();
     public static PearlBlockThrow pearlBlockThrow = new PearlBlockThrow();
