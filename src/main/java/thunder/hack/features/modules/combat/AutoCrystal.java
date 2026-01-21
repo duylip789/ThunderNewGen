@@ -97,7 +97,6 @@ public class AutoCrystal extends Module {
     private final Setting<Boolean> mining = new Setting<>("Mining", true, v -> page.is(Pages.Pause));
     private final Setting<Boolean> eating = new Setting<>("Eating", true, v -> page.is(Pages.Pause));
     private final Setting<Boolean> aura = new Setting<>("Aura", false, v -> page.is(Pages.Pause));
-    private final Setting<Boolean> pistonAura = new Setting<>("PistonAura", true, v -> page.is(Pages.Pause));
     private final Setting<Boolean> surround = new Setting<>("Surround", true, v -> page.is(Pages.Pause));
     private final Setting<Boolean> middleClick = new Setting<>("MiddleClick", true, v -> page.is(Pages.Pause));
     private final Setting<Boolean> inventory = new Setting<>("Inventory", false, v -> page.is(Pages.Pause));
