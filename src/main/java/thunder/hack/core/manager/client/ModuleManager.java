@@ -132,7 +132,6 @@ public class ModuleManager implements IManager {
     public static GapplesHud gapplesHud = new GapplesHud();
     public static HitBubbles hitBubbles = new HitBubbles();
     public static AutoTrader autoTrader = new AutoTrader();
-    public static AutoAnvil autoAnvil = new AutoAnvil();
     public static CandleHud candleHud = new CandleHud();
     public static Particles particles = new Particles();
     public static ToolSaver toolSaver = new ToolSaver();
