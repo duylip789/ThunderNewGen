@@ -411,9 +411,9 @@ public final class AutoAnchor extends Module {
 
         if (ModuleManager.autoTrap.isEnabled() && !ModuleManager.surround.inactivityTimer.passedMs(500))
             return true;
-
+//
             return false;
-
+//
         if (ModuleManager.holeFill.isEnabled() && !HoleFill.inactivityTimer.passedMs(500))
             return true;
 
