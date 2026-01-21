@@ -183,7 +183,6 @@ public class ModuleManager implements IManager {
     public static ArmorHud armorHud = new ArmorHud();
     public static AirPlace airPlace = new AirPlace();
     public static SelfTrap selfTrap = new SelfTrap();
-    public static AntiVoid antiVoid = new AntiVoid();
     public static AutoWalk autoWalk = new AutoWalk();
     public static AutoSign autoSign = new AutoSign();
     public static BlockESP blockESP = new BlockESP();
