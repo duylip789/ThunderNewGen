@@ -6,7 +6,6 @@ import thunder.hack.events.impl.EventDeath;
 import thunder.hack.events.impl.PacketEvent;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
-import thunder.hack.features.modules.combat.AutoCrystal;
 import thunder.hack.setting.Setting;
 import thunder.hack.utility.ThunderUtility;
 
