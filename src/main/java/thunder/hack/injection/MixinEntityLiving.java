@@ -63,7 +63,7 @@ public abstract class MixinEntityLiving implements IEntityLiving {
 
     @Inject(method = "isFallFlying", at = @At("HEAD"), cancellable = true)
     public void isFallFlyingHook(CallbackInfoReturnable<Boolean> cir) {
-        // Đã gỡ bỏ elytraRecast để tránh lỗi build
+        // Code cũ elytraRecast đã xóa ở đây để tránh lỗi
     }
 
     @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
@@ -98,4 +98,4 @@ public abstract class MixinEntityLiving implements IEntityLiving {
         }
         return sprinting;
     }
-    }
+}
