@@ -32,7 +32,7 @@ public class AutoArmor extends Module {
     private final Setting<EnchantPriority> body = new Setting<>("Body", EnchantPriority.Protection);
     private final Setting<EnchantPriority> tights = new Setting<>("Tights", EnchantPriority.Protection);
     private final Setting<EnchantPriority> feet = new Setting<>("Feet", EnchantPriority.Protection);
-    private final Setting<ElytraPriority> elytraPriority = new Setting<>("ElytraPriority", ElytraPriority.Ignore);
+  //  private final Setting<ElytraPriority> elytraPriority = new Setting<>("ElytraPriority", ElytraPriority.Ignore);
     private final Setting<Integer> delay = new Setting<>("Delay", 5, 0, 10);
     private final Setting<Boolean> oldVersion = new Setting<>("OldVersion", false);
     private final Setting<Boolean> pauseInventory = new Setting<>("PauseInventory", false);
