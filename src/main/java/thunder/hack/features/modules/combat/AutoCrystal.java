@@ -409,7 +409,19 @@ public class AutoCrystal extends Module {
 
             rotated = MathHelper.abs(yawDelta) <= yawStepVal || !yawStep.getValue().isEnabled();
 
-            float newYaw = rotationYaw + (yawDelta > 0 ? clampedYawDelta : -clampedYawDelta);
+            float newYaw = rotationYaw + (yawDelta > 0 ? clampedYawDelta : -clampedYawDelta 
+    @Override
+    public void onRender3D(MatrixStack stack) {
+        // Giữ lại dòng này để cập nhật dữ liệu ngầm cho crystal, nhưng không vẽ gì cả
+    crystalManager.update();
+   
+        // Đã xóa sạch code vẽ ESP và Box để tăng FPS
+    }
+
+    private void renderBox(String dmg, Box box) {
+        // Đã xóa nội dung để không vẽ ô vuông
+    }
+);
             float newPitch = MathHelper.clamp(rotationPitch + clampedPitchDelta, -90.0F, 90.0F);
 
             double gcdFix = (Math.pow(mc.options.getMouseSensitivity().getValue() * 0.6 + 0.2, 3.0)) * 1.2;
@@ -426,71 +438,7 @@ public class AutoCrystal extends Module {
         }
     }
 
-    @Override
-    public void onRender3D(MatrixStack stack) {
-        crystalManager.update();
 
-        if (target != null) switch (targetEsp.getValue()) {
-            case CelkaPasta -> Render3DEngine.drawOldTargetEsp(stack, target);
-            case NurikZapen -> CaptureMark.render(target);
-            case ThunderHackV2 ->
-                    Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
-            case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
-        }
-
-        if (render.getValue()) {
-            Map<BlockPos, Long> cache = new ConcurrentHashMap<>(renderPositions);
-
-            cache.forEach((pos, time) -> {
-                if (System.currentTimeMillis() - time > 500) renderPositions.remove(pos);
-            });
-
-            String dmg = MathUtility.round2(renderDamage) + (rselfDamage.getValue() ? " / " + MathUtility.round2(renderSelfDamage) : "");
-
-            if (renderMode.is(Render.Fade)) {
-                cache.forEach((pos, time) -> {
-                    if (System.currentTimeMillis() - time < 500) {
-                        int alpha = (int) (100f * (1f - ((System.currentTimeMillis() - time) / 500f)));
-
-                        Render3DEngine.FILLED_QUEUE.add(new Render3DEngine.FillAction(new Box(pos), Render2DEngine.injectAlpha(fillColor.getValue().getColorObject(), alpha)));
-                        Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(new Box(pos), Render2DEngine.injectAlpha(lineColor.getValue().getColorObject(), alpha), lineWidth.getValue()));
-
-                        if (drawDamage.getValue())
-                            Render3DEngine.drawTextIn3D(dmg, pos.toCenterPos(), 0, 0.1, 0, Render2DEngine.applyOpacity(textColor.getValue().getColorObject(), alpha / 100f));
-                    }
-                });
-            } else if (renderMode.getValue() == Render.Slide && renderPos != null) {
-                if (prevRenderPos == null) prevRenderPos = renderPos;
-                if (renderPositions.isEmpty()) return;
-                float mult = MathUtility.clamp((System.currentTimeMillis() - renderMultiplier) / (float) slideDelay.getValue(), 0f, 1f);
-                Box interpolatedBox = Render3DEngine.interpolateBox(new Box(prevRenderPos), new Box(renderPos), mult);
-
-                renderBox(dmg, interpolatedBox);
-            } else if (renderPos != null) {
-                if (renderPositions.isEmpty()) return;
-
-                renderBox(dmg, new Box(renderPos));
-            }
-        }
-
-        if (target != null && renderExtrapolation.getValue().isEnabled())
-            Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(PredictUtility.predictBox(target, extrapolation.getValue()), extrapolationColor.getValue().getColorObject(), 1f));
-
-        if (target != null && bestPosition != null && renderInteractVector.getValue().isEnabled()) {
-            Vec3d vec = bestPosition.getPos();
-            Box b = new Box(vec.getX() - .05, vec.getY() - .05, vec.getZ() - .05, vec.getX() + .05, vec.getY() + .05, vec.getZ() + .05);
-            Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(b, interactColor.getValue().getColorObject(), 1f));
-            Render3DEngine.FILLED_QUEUE.add(new Render3DEngine.FillAction(b, Render2DEngine.applyOpacity(interactColor.getValue().getColorObject(), 0.6f)));
-        }
-    }
-
-    private void renderBox(String dmg, Box box) {
-        Render3DEngine.FILLED_QUEUE.add(new Render3DEngine.FillAction(box, fillColor.getValue().getColorObject()));
-        Render3DEngine.OUTLINE_QUEUE.add(new Render3DEngine.OutlineAction(box, lineColor.getValue().getColorObject(), lineWidth.getValue()));
-
-        if (drawDamage.getValue())
-            Render3DEngine.drawTextIn3D(dmg, box.getCenter(), 0, 0.1, 0, textColor.getValue().getColorObject());
-    }
 
     public boolean shouldPause() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return true;
