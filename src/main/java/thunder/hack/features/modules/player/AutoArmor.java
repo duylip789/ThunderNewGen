@@ -32,7 +32,7 @@ public class AutoArmor extends Module {
     private final Setting<EnchantPriority> body = new Setting<>("Body", EnchantPriority.Protection);
     private final Setting<EnchantPriority> tights = new Setting<>("Tights", EnchantPriority.Protection);
     private final Setting<EnchantPriority> feet = new Setting<>("Feet", EnchantPriority.Protection);
-  //  private final Setting<ElytraPriority> elytraPriority = new Setting<>("ElytraPriority", ElytraPriority.Ignore);
+    private final Setting<ElytraPriority> elytraPriority = new Setting<>("ElytraPriority", ElytraPriority.Ignore);
     private final Setting<Integer> delay = new Setting<>("Delay", 5, 0, 10);
     private final Setting<Boolean> oldVersion = new Setting<>("OldVersion", false);
     private final Setting<Boolean> pauseInventory = new Setting<>("PauseInventory", false);
@@ -112,7 +112,8 @@ public class AutoArmor extends Module {
                 if (!ElytraItem.isUsable(is))
                     return 0;
 
-                boolean ePlus = elytraPriority.is(ElytraPriority.ElytraPlus) && (ModuleManager.elytraRecast.isEnabled() || ModuleManager.elytraPlus.isEnabled());
+                boolean ePlus = elytraPriority.is(ElytraPriority.ElytraPlus) && ModuleManager.elytraPlus.isEnabled();
+                
                 boolean ignore = elytraPriority.is(ElytraPriority.Ignore) && mc.player.getInventory().getStack(38).getItem() instanceof ElytraItem;
 
                 if (ePlus || ignore || elytraPriority.is(ElytraPriority.Always))
