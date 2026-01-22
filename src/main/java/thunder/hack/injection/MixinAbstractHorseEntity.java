@@ -17,8 +17,7 @@ public abstract class MixinAbstractHorseEntity extends AnimalEntity {
 
     @Inject(method = "isSaddled", at = @At("HEAD"), cancellable = true)
     public void onIsSaddled(CallbackInfoReturnable<Boolean> cir) {
-        // Nếu bạn muốn cưỡi ngựa không cần yên (Saddled) thì giữ dòng dưới
-        // Nếu không cần thì có thể để trống hàm này
+        // Luôn trả về true để cưỡi ngựa không cần yên
         cir.setReturnValue(true);
     }
 }
