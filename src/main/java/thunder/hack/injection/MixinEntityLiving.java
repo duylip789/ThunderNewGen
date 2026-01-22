@@ -83,10 +83,6 @@ public class MixinEntityLiving implements IEntityLiving {
 
     @Inject(method = "isFallFlying", at = @At("TAIL"), cancellable = true)
     public void isFallFlyingHook(CallbackInfoReturnable<Boolean> cir) {
-        if (ModuleManager.elytraRecast.isEnabled()) {
-            boolean elytra = cir.getReturnValue();
-            if (prevFlying && !cir.getReturnValue()) {
-                cir.setReturnValue(ModuleManager.elytraRecast.castElytra());
             }
             prevFlying = elytra;
         }
