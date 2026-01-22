@@ -28,19 +28,13 @@ import static thunder.hack.features.modules.Module.mc;
 import static thunder.hack.features.modules.movement.WaterSpeed.Mode.CancelResurface;
 
 @Mixin(LivingEntity.class)
-public class MixinEntityLiving implements IEntityLiving {
-    @Shadow
-    protected double serverX;
-    @Shadow
-    protected double serverY;
-    @Shadow
-    protected double serverZ;
+public abstract class MixinEntityLiving implements IEntityLiving {
+    @Shadow protected double serverX;
+    @Shadow protected double serverY;
+    @Shadow protected double serverZ;
 
-    @Unique
-    double prevServerX, prevServerY, prevServerZ;
-
-    @Unique
-    public List<Aura.Position> positonHistory = new ArrayList<>();
+    @Unique double prevServerX, prevServerY, prevServerZ;
+    @Unique public List<Aura.Position> positonHistory = new ArrayList<>();
 
     @Override
     public List<Aura.Position> getPositionHistory() {
@@ -49,7 +43,7 @@ public class MixinEntityLiving implements IEntityLiving {
 
     @Inject(method = "getHandSwingDuration", at = {@At("HEAD")}, cancellable = true)
     private void getArmSwingAnimationEnd(final CallbackInfoReturnable<Integer> info) {
-        if (!ModuleManager.noRender.noSwing.getValue() && ModuleManager.animations.shouldChangeAnimationDuration() && Animations.slowAnimation.getValue())
+        if (ModuleManager.animations.isEnabled() && !ModuleManager.noRender.noSwing.getValue() && ModuleManager.animations.shouldChangeAnimationDuration() && Animations.slowAnimation.getValue())
             info.setReturnValue(Animations.slowAnimationVal.getValue());
     }
 
@@ -63,35 +57,19 @@ public class MixinEntityLiving implements IEntityLiving {
         positonHistory.removeIf(Aura.Position::shouldRemove);
     }
 
-    @Override
-    public double getPrevServerX() {
-        return prevServerX;
-    }
+    @Override public double getPrevServerX() { return prevServerX; }
+    @Override public double getPrevServerY() { return prevServerY; }
+    @Override public double getPrevServerZ() { return prevServerZ; }
 
-    @Override
-    public double getPrevServerY() {
-        return prevServerY;
-    }
-
-    @Override
-    public double getPrevServerZ() {
-        return prevServerZ;
-    }
-
-    @Unique
-    private boolean prevFlying = false;
-
-    @Inject(method = "isFallFlying", at = @At("TAIL"), cancellable = true)
+    @Inject(method = "isFallFlying", at = @At("HEAD"), cancellable = true)
     public void isFallFlyingHook(CallbackInfoReturnable<Boolean> cir) {
-            }
-            prevFlying = elytra;
-        }
+        // Đã gỡ bỏ elytraRecast để tránh lỗi build
     }
 
     @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
     public void travelHook(Vec3d movementInput, CallbackInfo ci) {
         if (Module.fullNullCheck()) return;
-        if ((LivingEntity) (Object) this != mc.player) return;
+        if ((Object) this != mc.player) return;
         final EventTravel event = new EventTravel(mc.player.getVelocity(), true);
         ThunderHack.EVENT_BUS.post(event);
         if (event.isCancelled()) {
@@ -103,7 +81,7 @@ public class MixinEntityLiving implements IEntityLiving {
     @Inject(method = "travel", at = @At("RETURN"), cancellable = true)
     public void travelPostHook(Vec3d movementInput, CallbackInfo ci) {
         if (Module.fullNullCheck()) return;
-        if ((LivingEntity) (Object) this != mc.player) return;
+        if ((Object) this != mc.player) return;
         final EventTravel event = new EventTravel(movementInput, false);
         ThunderHack.EVENT_BUS.post(event);
         if (event.isCancelled()) {
@@ -120,12 +98,4 @@ public class MixinEntityLiving implements IEntityLiving {
         }
         return sprinting;
     }
-
-    @Inject(method = "getHandSwingDuration", at = @At("HEAD"), cancellable = true)
-    private void onGetHandSwingDuration(CallbackInfoReturnable<Integer> cir) {
-        if (ModuleManager.noRender.isEnabled() && ModuleManager.noRender.noSwing.getValue()) {
-            cir.setReturnValue(0);
-            cir.cancel();
-        }
     }
-}
