@@ -101,7 +101,7 @@ public class Aura extends Module {
         mc.world.getEntities().forEach(allEntities::add);
 
         List<Entity> targets = allEntities.stream()
-                .filter(entity -> entity instanceof PlayerEntity && entity != mc.player && !entity.isDead())
+                filter(entity -> entity instanceof PlayerEntity && entity != mc.player && entity.isAlive())
                 .filter(entity -> mc.player.distanceTo(entity) <= range.getValue())
                 .toList();
 
