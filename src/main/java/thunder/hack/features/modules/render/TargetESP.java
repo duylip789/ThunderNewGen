@@ -28,30 +28,30 @@ public class TargetESP extends Module {
     }
 
     private enum Mode {
-        Circle,
-        Cube,
-        Ghost
+        Circle, Cube, Ghost
     }
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        // ✅ LẤY AURA ĐÚNG KIỂU THUNDER
+        // LẤY AURA ĐÚNG KIỂU THUNDER
         Aura aura = ModuleManager.aura;
-        if (aura == null || aura.target == null) return;
+        if (aura == null || !aura.isEnabled() || aura.target == null)
+            return;
 
         Entity target = aura.target;
         Color c = color.getValue();
 
         switch (mode.getValue()) {
             case Circle -> {
+                // THAM SỐ CUỐI PHẢI LÀ INT (FIX LỖI LOSY)
                 Render3DEngine.drawCircle3D(
                         stack,
                         target,
                         size.getValue(),
                         c.getRGB(),
-                        32,
+                        30,
                         false,
-                        1 // ⚠ int, KHÔNG phải float
+                        1
                 );
             }
 
@@ -60,13 +60,9 @@ public class TargetESP extends Module {
                 Render3DEngine.drawFilledBox(
                         stack,
                         box,
-                        Render2DEngine.injectAlpha(c, 80)
+                        Render2DEngine.injectAlpha(c, 100)
                 );
-                Render3DEngine.drawBoxOutline(
-                        box,
-                        c,
-                        2.0f
-                );
+                Render3DEngine.drawBoxOutline(box, c, 2f);
             }
 
             case Ghost -> {
