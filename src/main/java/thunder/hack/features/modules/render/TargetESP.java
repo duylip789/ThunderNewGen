@@ -27,25 +27,24 @@ public class TargetESP extends Module {
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        if (ModuleManager.aura == null || ModuleManager.aura.target == null) return;
+        // Cách gọi này để tránh lỗi ExceptionInInitializerError trong log của bạn
+        Aura auraModule = ModuleManager.aura;
+        if (auraModule == null || auraModule.target == null) return;
         
-        Entity target = ModuleManager.aura.target;
+        Entity target = auraModule.target;
         Color c = color.getValue();
 
         switch (mode.getValue()) {
             case Circle:
-                // FIX LỖI #284: Thêm đủ 7 tham số theo đúng file Render3DEngine 1.21 của bạn
+                // Điền đủ 7 tham số theo đúng Render3DEngine của bạn
                 Render3DEngine.drawCircle3D(stack, target, size.getValue(), c.getRGB(), 30, false, 1);
                 break;
-
             case Cube:
                 Box box = target.getBoundingBox();
                 Render3DEngine.drawFilledBox(stack, box, Render2DEngine.injectAlpha(c, 100));
                 Render3DEngine.drawBoxOutline(box, c, 2.0f);
                 break;
-
             case Ghost:
-                // Chế độ Ghost bay lượn cực đẹp như bạn yêu cầu
                 Render3DEngine.drawTargetEsp(stack, target);
                 break;
         }
