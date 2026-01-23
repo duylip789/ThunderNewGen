@@ -7,7 +7,6 @@ import thunder.hack.events.impl.EventDeath;
 import thunder.hack.events.impl.EventAttack;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
-import thunder.hack.features.modules.combat.AutoCrystal;
 import thunder.hack.setting.Setting;
 
 public final class SoundFX extends Module {
