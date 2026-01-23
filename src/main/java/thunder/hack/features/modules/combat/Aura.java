@@ -210,6 +210,36 @@ public class Aura extends Module {
         }
     }
 
+    // =============================
+    // API COMPAT FIX (DO NOT TOUCH CORE)
+    // =============================
+
+    /** 
+     * Dùng cho PearlChaser / AutoBuff
+     * Chỉ pause logic bên ngoài, không ảnh hưởng core
+     */
+    public void pause() {
+        // noop – giữ tương thích module
+    }
+
+    /**
+     * Dùng cho TriggerBot / FakePlayer
+     * Trả cooldown vanilla an toàn
+     */
+    public float getAttackCooldown() {
+        if (mc.player == null) return 1.0f;
+        return mc.player.getAttackCooldownProgress(0.0f);
+    }
+
+    /**
+     * Dùng cho TriggerBot
+     * Check player có đứng trên nước không
+     */
+    public boolean isAboveWater() {
+        if (mc.player == null || mc.world == null) return false;
+        return mc.player.isTouchingWater();
+    }
+
     // ================= ENUM =================
     public enum Sort { LowestDistance, HighestDistance, LowestHealth, FOV }
     public enum Mode { Track, Interact, Grim, None }
