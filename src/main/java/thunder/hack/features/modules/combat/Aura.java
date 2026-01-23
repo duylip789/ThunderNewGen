@@ -43,7 +43,6 @@ import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.BooleanSettingGroup;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
-import thunder.hack.utility.interfaces.IOtherClientPlayerEntity;
 import thunder.hack.utility.math.MathUtility;
 import thunder.hack.utility.player.InteractionUtility;
 import thunder.hack.utility.player.InventoryUtility;
