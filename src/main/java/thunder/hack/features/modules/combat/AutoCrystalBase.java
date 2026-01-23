@@ -60,7 +60,7 @@ public class AutoCrystalBase extends Module {
     private final Timer calcTimer = new Timer();
 
     public AutoCrystalBase() {
-        super("AutoCrystalBase", Category.COMBAT);
+        super("AutoCrystalBase", Category.HIDDEN);
     }
 
     @EventHandler
