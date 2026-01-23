@@ -23,7 +23,7 @@ public class MixinOtherClientPlayerEntity extends AbstractClientPlayerEntity imp
         super(world, profile);
     }
 
-    public void resolve(Aura.Resolver mode) {
+    public void resolve(Object mode) {
         if ((Object) this == FakePlayer.fakePlayer) {
             backUpY = -999;
             return;
