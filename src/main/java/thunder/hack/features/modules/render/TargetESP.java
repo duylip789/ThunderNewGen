@@ -11,16 +11,17 @@ import thunder.hack.utility.render.Render3DEngine;
 import thunder.hack.core.manager.client.ModuleManager;
 import java.awt.*;
 
-// --- ĐỊA CHỈ ĐÃ SỬA LẠI THEO Ý BẠN ---
+// 1. Dòng này đã đúng (theo bạn gửi)
 import thunder.hack.setting.Setting; 
-import thunder.hack.events.impl.EventRender3D; 
-// ------------------------------------
+
+// 2. Dòng này CẦN KIỂM TRA: Nếu lỗi, hãy thử xóa chữ ".impl" hoặc đổi tên thành Render3DEvent
+import thunder.hack.events.impl.Render3DEvent; 
 
 public class TargetESP extends Module {
 
     public TargetESP() {
-        // Nếu Category.RENDER lỗi thì đổi thành Category.VISUALS
-        super("TargetESP", "Hien thi Target", Category.RENDER);
+        // Kiểm tra Category: Nếu lỗi hãy đổi thành Category.VISUALS hoặc Category.CLIENT
+        super("TargetESP", "Hien thi hieu ung quanh muc tieu", Category.RENDER);
     }
 
     private final Setting<Mode> mode = new Setting<>("Mode", Mode.Ghost);
@@ -32,8 +33,8 @@ public class TargetESP extends Module {
     }
 
     @Override
-    public void onRender3D(EventRender3D event) { 
-        // Lay muc tieu tu Aura
+    public void onRender3D(Render3DEvent event) { // Tên ở đây phải giống hệt dòng import ở trên
+        // Lấy target từ Aura
         Entity target = ModuleManager.get(Aura.class).target;
         if (target == null) return;
 
@@ -44,13 +45,15 @@ public class TargetESP extends Module {
             case Circle:
                 Render3DEngine.drawCircle3D(stack, target, size.getValue(), c);
                 break;
+
             case Cube:
                 Box box = target.getBoundingBox();
                 Render3DEngine.drawFilledBox(stack, box, Render2DEngine.injectAlpha(c, 100));
                 Render3DEngine.drawBoxOutline(box, c, 2.0f);
                 break;
+
             case Ghost:
-                // Su dung ham 3D bay lung tung trong Render3DEngine
+                // Bản 3D bay lung tung cực mượt
                 Render3DEngine.drawTargetEsp(stack, target);
                 break;
         }
