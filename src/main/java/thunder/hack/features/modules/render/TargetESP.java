@@ -35,13 +35,11 @@ public class TargetESP extends Module {
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        // LẤY AURA ĐÚNG KIỂU MODULEMANAGER
-        Module m = ModuleManager.getModuleByName("Aura");
-        if (!(m instanceof Aura aura)) return;
+        // ✅ LẤY AURA ĐÚNG KIỂU THUNDER
+        Aura aura = ModuleManager.aura;
+        if (aura == null || aura.target == null) return;
 
         Entity target = aura.target;
-        if (target == null) return;
-
         Color c = color.getValue();
 
         switch (mode.getValue()) {
@@ -53,7 +51,7 @@ public class TargetESP extends Module {
                         c.getRGB(),
                         32,
                         false,
-                        1   // ✅ int, KHÔNG phải float
+                        1 // ⚠ int, KHÔNG phải float
                 );
             }
 
