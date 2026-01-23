@@ -286,14 +286,14 @@ public class Aura extends Module {
         if (resolver.not(Resolver.Off))
             for (PlayerEntity player : mc.world.getPlayers())
                 if (player instanceof OtherClientPlayerEntity)
-                    ((IOtherClientPlayerEntity) player).resolve(resolver.getValue());
+                   // ((IOtherClientPlayerEntity) player).resolve(resolver.getValue());
     }
 
     public void restorePlayers() {
         if (resolver.not(Resolver.Off))
             for (PlayerEntity player : mc.world.getPlayers())
                 if (player instanceof OtherClientPlayerEntity)
-                    ((IOtherClientPlayerEntity) player).releaseResolver();
+                  //  ((IOtherClientPlayerEntity) player).releaseResolver();
     }
 
     public void handleKill() {
