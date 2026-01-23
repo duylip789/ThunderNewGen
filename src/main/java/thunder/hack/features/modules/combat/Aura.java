@@ -15,6 +15,7 @@ import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.render.Render2DEngine;
 import thunder.hack.utility.render.Render3DEngine;
+import net.minecraft.util.math.Vec3d;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -181,6 +182,32 @@ public class Aura extends Module {
                 .toList();
 
         return targets.isEmpty() ? null : targets.get(0);
+    }
+
+    // =============================
+    // FIX TARGET ESP / POSITION HISTORY
+    // =============================
+    public static class Position {
+        public final double x;
+        public final double y;
+        public final double z;
+        private final long time;
+
+        public Position(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.time = System.currentTimeMillis();
+        }
+
+        public Vec3d toVec3d() {
+            return new Vec3d(x, y, z);
+        }
+
+        public boolean shouldRemove() {
+            // giữ lịch sử vị trí ~1s (có thể chỉnh)
+            return System.currentTimeMillis() - time > 1000L;
+        }
     }
 
     // ================= ENUM =================
