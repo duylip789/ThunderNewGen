@@ -73,8 +73,6 @@ public class PearlChaser extends Module {
             if (Aura.target != null && ModuleManager.aura.isEnabled() && Aura.target instanceof PlayerEntity pl && !targets.containsKey(pl))
                 targets.put(pl, System.currentTimeMillis());
 
-            if (AutoCrystal.target != null && ModuleManager.autoCrystal.isEnabled() && AutoCrystal.target instanceof PlayerEntity pl && !targets.containsKey(pl))
-                targets.put(pl, System.currentTimeMillis());
 
             new HashMap<>(targets).forEach((k, v) -> {
                 if (System.currentTimeMillis() - v > 10000)
