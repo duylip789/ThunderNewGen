@@ -321,9 +321,7 @@ public class Aura extends Module {
             }
         }
 
-        resolvePlayers();
         auraLogic();
-        restorePlayers();
         hitTicks--;
     }
 
