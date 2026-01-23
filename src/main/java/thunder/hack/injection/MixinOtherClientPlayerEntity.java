@@ -1,7 +1,7 @@
 package thunder.hack.injection;
 
 import com.mojang.authlib.GameProfile;
-import net.mineaft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.Vec3d;
