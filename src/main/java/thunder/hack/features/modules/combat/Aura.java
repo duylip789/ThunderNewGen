@@ -3,6 +3,7 @@ package thunder.hack.features.modules.combat;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
@@ -93,7 +94,7 @@ public class Aura extends Module {
     public final Setting<String> sprint = new Setting<>("Sprint", "HVH");
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
 
-    // ================= TARGET =================
+    // ================= TARGETS =================
     public final Setting<SettingGroup> targetsGroup =
             new Setting<>("Targets", new SettingGroup(false, 0));
 
@@ -116,8 +117,8 @@ public class Aura extends Module {
     public final Setting<SettingGroup> visual =
             new Setting<>("Visual", new SettingGroup(false, 0));
 
-    public final Setting<Boolean> targetESP =
-            new Setting<>("TargetESP", true).addToGroup(visual);
+    public final Setting<ESPMode> espMode =
+            new Setting<>("ESPMode", ESPMode.Ghost).addToGroup(visual);
 
     public final Setting<Color> espColor =
             new Setting<>("ESPColor", new Color(255, 80, 80, 160)).addToGroup(visual);
@@ -134,7 +135,7 @@ public class Aura extends Module {
         super("Aura", Category.COMBAT);
     }
 
-    // ================= ATTACK LOGIC =================
+    // ================= ATTACK =================
     @EventHandler
     public void onSync(EventSync e) {
         target = findTarget();
@@ -150,24 +151,20 @@ public class Aura extends Module {
     // ================= ESP RENDER =================
     @Override
     public void onRender3D(MatrixStack stack) {
-        if (!targetESP.getValue()) return;
-        if (target == null) return;
-        if (mc.player == null || mc.world == null) return;
+        if (espMode.getValue() == ESPMode.Off) return;
+        if (target == null || mc.player == null || mc.world == null) return;
 
         Box box = target.getBoundingBox();
         Color c = espColor.getValue();
 
-        Render3DEngine.drawBoxOutline(
-                box,
-                c,
-                espWidth.getValue()
-        );
+        if (espMode.getValue() == ESPMode.Box) {
+            Render3DEngine.drawBoxOutline(box, c, espWidth.getValue());
+            Render3DEngine.drawFilledBox(stack, box, Render2DEngine.injectAlpha(c, 80));
+        }
 
-        Render3DEngine.drawFilledBox(
-                stack,
-                box,
-                Render2DEngine.injectAlpha(c, 80)
-        );
+        if (espMode.getValue() == ESPMode.Ghost) {
+            Render3DEngine.drawTargetEsp(stack, target);
+        }
     }
 
     // ================= TARGET SELECT =================
@@ -186,9 +183,11 @@ public class Aura extends Module {
         return targets.isEmpty() ? null : targets.get(0);
     }
 
+    // ================= ENUM =================
     public enum Sort { LowestDistance, HighestDistance, LowestHealth, FOV }
     public enum Mode { Track, Interact, Grim, None }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Switch { Normal, None, Silent }
     public enum WallsBypass { Off, V1, V2 }
+    public enum ESPMode { Off, Box, Ghost }
 }
