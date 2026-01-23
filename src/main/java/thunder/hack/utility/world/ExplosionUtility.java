@@ -60,7 +60,6 @@ public final class ExplosionUtility {
         if (!target.isImmuneToExplosion(explosion) && !target.isInvulnerable()) {
             double distExposure = (float) target.squaredDistanceTo(explosionPos) / 144.;
             if (distExposure <= 1.0) {
-                // Fix lỗi false nằm khơi khơi ở đây
                 terrainIgnore = false;
                 double exposure = getExposure(explosionPos, target.getBoundingBox(), optimized);
                 double finalExposure = (1.0 - distExposure) * exposure;
@@ -80,8 +79,7 @@ public final class ExplosionUtility {
 
                 if (toDamage <= 0f) toDamage = 0f;
                 else {
-                    // Thay thế ModuleManager.autoCrystal.assumeBestArmor bằng 32f (max giáp)
-                    float protAmount = 32f; 
+                    float protAmount = 32f;
                     if (protAmount > 0)
                         toDamage = DamageUtil.getInflictedDamage(toDamage, protAmount);
                 }
@@ -92,8 +90,7 @@ public final class ExplosionUtility {
     }
 
     public static float getExplosionDamageWPredict(Vec3d explosionPos, PlayerEntity target, Box predict, boolean optimized) {
-        if (mc.world.getDifficulty() == Difficulty.PEACEFUL) return 0f;
-        if (target == null || predict == null) return 0f;
+        if (mc.world.getDifficulty() == Difficulty.PEACEFUL || target == null || predict == null) return 0f;
 
         if (explosion == null)
             explosion = new Explosion(mc.world, mc.player, 1f, 33f, 7f, 6f, false, Explosion.DestructionType.DESTROY);
@@ -121,12 +118,6 @@ public final class ExplosionUtility {
 
                 toDamage = DamageUtil.getDamageLeft(target, toDamage, ((IExplosion) explosion).getDamageSource(), (float) target.getArmor(), (float) Objects.requireNonNull(target.getAttributeInstance(EntityAttributes.GENERIC_ARMOR_TOUGHNESS)).getValue());
 
-                if (target.hasStatusEffect(StatusEffects.RESISTANCE)) {
-                    int resistance = 25 - (Objects.requireNonNull(target.getStatusEffect(StatusEffects.RESISTANCE)).getAmplifier() + 1) * 5;
-                    float resistance_1 = toDamage * resistance;
-                    toDamage = Math.max(resistance_1 / 25f, 0f);
-                }
-
                 if (toDamage <= 0f) toDamage = 0f;
                 else {
                     float protAmount = 32f;
@@ -138,68 +129,32 @@ public final class ExplosionUtility {
         return 0f;
     }
 
-    public static float getDamageOfGhostBlock(Vec3d explosionPos, PlayerEntity target, BlockPos bp) {
-        if (mc.world.getDifficulty() == Difficulty.PEACEFUL) return 0f;
-
-        if (explosion == null)
-            explosion = new Explosion(mc.world, mc.player, 1f, 33f, 7f, 6f, false, Explosion.DestructionType.DESTROY);
-
-        ((IExplosion) explosion).setX(explosionPos.x);
-        ((IExplosion) explosion).setY(explosionPos.y);
-        ((IExplosion) explosion).setZ(explosionPos.z);
-
-        if (((IExplosion) explosion).getWorld() != mc.world) ((IExplosion) explosion).setWorld(mc.world);
-
-        double maxDist = 12;
-        if (!new Box(MathHelper.floor(explosionPos.x - maxDist - 1.0), MathHelper.floor(explosionPos.y - maxDist - 1.0), MathHelper.floor(explosionPos.z - maxDist - 1.0), MathHelper.floor(explosionPos.x + maxDist + 1.0), MathHelper.floor(explosionPos.y + maxDist + 1.0), MathHelper.floor(explosionPos.z + maxDist + 1.0)).intersects(target.getBoundingBox())) {
-            return 0f;
-        }
-
-        if (!target.isImmuneToExplosion(explosion) && !target.isInvulnerable()) {
-            double distExposure = target.squaredDistanceTo(explosionPos) / 144.;
-            if (distExposure <= 1.0) {
-                terrainIgnore = false;
-                double exposure = getExposureGhost(explosionPos, target, bp);
-                double finalExposure = (1.0 - distExposure) * exposure;
-
-                float toDamage = (float) Math.floor((finalExposure * finalExposure + finalExposure) / 2.0 * 7.0 * maxDist + 1.0);
-
-                if (mc.world.getDifficulty() == Difficulty.EASY) toDamage = Math.min(toDamage / 2f + 1f, toDamage);
-                else if (mc.world.getDifficulty() == Difficulty.HARD) toDamage = toDamage * 3f / 2f;
-
-                toDamage = DamageUtil.getDamageLeft(target, toDamage, ((IExplosion) explosion).getDamageSource(), (float) target.getArmor(), (float) target.getAttributeInstance(EntityAttributes.GENERIC_ARMOR_TOUGHNESS).getValue());
-
-                if (target.hasStatusEffect(StatusEffects.RESISTANCE)) {
-                    int resistance = 25 - (target.getStatusEffect(StatusEffects.RESISTANCE).getAmplifier() + 1) * 5;
-                    float resistance_1 = toDamage * resistance;
-                    toDamage = Math.max(resistance_1 / 25f, 0f);
-                }
-
-                if (toDamage <= 0f) toDamage = 0f;
-                else {
-                    float protAmount = 32f;
-                    if (protAmount > 0) toDamage = DamageUtil.getInflictedDamage(toDamage, protAmount);
-                }
-                return toDamage;
-            }
-        }
-        return 0f;
+    // Hàm này rất quan trọng cho InteractionUtility.java
+    public static BlockHitResult rayCastBlock(RaycastContext context, BlockPos block) {
+        return BlockView.raycast(context.getStart(), context.getEnd(), context, (raycastContext, blockPos) -> {
+            BlockState blockState = blockPos.equals(block) ? Blocks.OBSIDIAN.getDefaultState() : Blocks.AIR.getDefaultState();
+            VoxelShape voxelShape = raycastContext.getBlockShape(blockState, mc.world, blockPos);
+            BlockHitResult blockHitResult = mc.world.raycastBlock(raycastContext.getStart(), raycastContext.getEnd(), blockPos, voxelShape, blockState);
+            VoxelShape voxelShape2 = VoxelShapes.empty();
+            BlockHitResult blockHitResult2 = voxelShape2.raycast(raycastContext.getStart(), raycastContext.getEnd(), blockPos);
+            double d = blockHitResult == null ? Double.MAX_VALUE : raycastContext.getStart().squaredDistanceTo(blockHitResult.getPos());
+            double e = blockHitResult2 == null ? Double.MAX_VALUE : raycastContext.getStart().squaredDistanceTo(blockHitResult2.getPos());
+            return d <= e ? blockHitResult : blockHitResult2;
+        }, (raycastContext) -> {
+            Vec3d vec3d = raycastContext.getStart().subtract(raycastContext.getEnd());
+            return BlockHitResult.createMissed(raycastContext.getEnd(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), BlockPos.ofFloored(raycastContext.getEnd()));
+        });
     }
 
     public static float getExposure(Vec3d source, Box box, boolean optimized) {
-        if (!optimized) return getExposure(source, box);
-        int miss = 0;
-        int hit = 0;
-        for (int k = 0; k <= 1; k += 1) {
-            for (int l = 0; l <= 1; l += 1) {
-                for (int m = 0; m <= 1; m += 1) {
-                    double n = MathHelper.lerp(k, box.minX, box.maxX);
-                    double o = MathHelper.lerp(l, box.minY, box.maxY);
-                    double p = MathHelper.lerp(m, box.minZ, box.maxZ);
-                    Vec3d vec3d = new Vec3d(n, o, p);
-                    if (raycast(vec3d, source, false) == HitResult.Type.MISS)
-                        ++miss;
-                    ++hit;
+        int miss = 0, hit = 0;
+        for (int k = 0; k <= 1; k++) {
+            for (int l = 0; l <= 1; l++) {
+                for (int m = 0; m <= 1; m++) {
+                    Vec3d vec3d = new Vec3d(MathHelper.lerp(k, box.minX, box.maxX), MathHelper.lerp(l, box.minY, box.maxY), MathHelper.lerp(m, box.minZ, box.maxZ));
+                    if (raycast(vec3d, source, false) == HitResult.Type.MISS) miss++;
+                    hit++;
+                    if (optimized) break; // Chỉ check 1 điểm nếu optimized
                 }
             }
         }
@@ -207,49 +162,18 @@ public final class ExplosionUtility {
     }
 
     public static float getExposure(Vec3d source, Box box) {
-        double d = 0.4545454446934474;
-        double e = 0.21739130885479366;
-        double f = 0.4545454446934474;
-        int i = 0;
-        int j = 0;
-        for (double k = 0.0; k <= 1.0; k += d)
-            for (double l = 0.0; l <= 1.0; l += e)
-                for (double m = 0.0; m <= 1.0; m += f) {
-                    double n = MathHelper.lerp(k, box.minX, box.maxX);
-                    double o = MathHelper.lerp(l, box.minY, box.maxY);
-                    double p = MathHelper.lerp(m, box.minZ, box.maxZ);
-                    Vec3d vec3d = new Vec3d(n + 0.045454555306552624, o, p + 0.045454555306552624);
-                    if (raycast(vec3d, source, false) == HitResult.Type.MISS)
-                        ++i;
-                    ++j;
-                }
-        return (float) i / (float) j;
+        return getExposure(source, box, false);
     }
 
-    private static float getExposureGhost(Vec3d source, Entity entity, BlockPos pos) {
-        Box box = entity.getBoundingBox();
-        double d = 1.0 / ((box.maxX - box.minX) * 2.0 + 1.0);
-        double e = 1.0 / ((box.maxY - box.minY) * 2.0 + 1.0);
-        double f = 1.0 / ((box.maxZ - box.minZ) * 2.0 + 1.0);
-        double g = (1.0 - Math.floor(1.0 / d) * d) / 2.0;
-        double h = (1.0 - Math.floor(1.0 / f) * f) / 2.0;
-        if (d < 0.0 || e < 0.0 || f < 0.0) return 0.0f;
-        int i = 0;
-        int j = 0;
-        for (double k = 0.0; k <= 1.0; k += d) {
-            for (double l = 0.0; l <= 1.0; l += e) {
-                for (double m = 0.0; m <= 1.0; m += f) {
-                    double n = MathHelper.lerp(k, box.minX, box.maxX);
-                    double o = MathHelper.lerp(l, box.minY, box.maxY);
-                    double p = MathHelper.lerp(m, box.minZ, box.maxZ);
-                    Vec3d vec3d = new Vec3d(n + g, o, p + h);
-                    if (raycastGhost(new RaycastContext(vec3d, source, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, entity), pos).getType() == HitResult.Type.MISS)
-                        ++i;
-                    ++j;
-                }
-            }
-        }
-        return (float) i / (float) j;
+    private static BlockHitResult raycastGhost(RaycastContext context, BlockPos bPos) {
+        return BlockView.raycast(context.getStart(), context.getEnd(), context, (innerContext, pos) -> {
+            BlockState blockState = pos.equals(bPos) ? Blocks.OBSIDIAN.getDefaultState() : mc.world.getBlockState(pos);
+            VoxelShape voxelShape = innerContext.getBlockShape(blockState, mc.world, pos);
+            return mc.world.raycastBlock(innerContext.getStart(), innerContext.getEnd(), pos, voxelShape, blockState);
+        }, innerContext -> {
+            Vec3d vec3d = innerContext.getStart().subtract(innerContext.getEnd());
+            return BlockHitResult.createMissed(innerContext.getEnd(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), BlockPos.ofFloored(innerContext.getEnd()));
+        });
     }
 
     public static HitResult.Type raycast(Vec3d start, Vec3d end, boolean ignoreTerrain) {
@@ -261,25 +185,6 @@ public final class ExplosionUtility {
         }, (innerContext) -> HitResult.Type.MISS);
     }
 
-    private static BlockHitResult raycastGhost(RaycastContext context, BlockPos bPos) {
-        return BlockView.raycast(context.getStart(), context.getEnd(), context, (innerContext, pos) -> {
-            Vec3d vec3d = innerContext.getStart();
-            Vec3d vec3d2 = innerContext.getEnd();
-            BlockState blockState;
-            if (!pos.equals(bPos)) blockState = mc.world.getBlockState(pos);
-            else blockState = Blocks.OBSIDIAN.getDefaultState();
-            VoxelShape voxelShape = innerContext.getBlockShape(blockState, mc.world, pos);
-            BlockHitResult blockHitResult = mc.world.raycastBlock(vec3d, vec3d2, pos, voxelShape, blockState);
-            BlockHitResult blockHitResult2 = VoxelShapes.empty().raycast(vec3d, vec3d2, pos);
-            double d = blockHitResult == null ? Double.MAX_VALUE : innerContext.getStart().squaredDistanceTo(blockHitResult.getPos());
-            double e = blockHitResult2 == null ? Double.MAX_VALUE : innerContext.getStart().squaredDistanceTo(blockHitResult2.getPos());
-            return d <= e ? blockHitResult : blockHitResult2;
-        }, innerContext -> {
-            Vec3d vec3d = innerContext.getStart().subtract(innerContext.getEnd());
-            return BlockHitResult.createMissed(innerContext.getEnd(), Direction.getFacing(vec3d.x, vec3d.y, vec3d.z), BlockPos.ofFloored(innerContext.getEnd()));
-        });
-    }
-
     public static int getProtectionAmount(Iterable<ItemStack> equipment) {
         MutableInt mutableInt = new MutableInt();
         equipment.forEach(i -> mutableInt.add(getProtectionAmount(i)));
@@ -287,9 +192,10 @@ public final class ExplosionUtility {
     }
 
     public static int getProtectionAmount(ItemStack stack) {
-        if (stack.isEmpty()) return 0;
-        int modifierBlast = EnchantmentHelper.getLevel(Enchantments.BLAST_PROTECTION, stack);
-        int modifier = EnchantmentHelper.getLevel(Enchantments.PROTECTION, stack);
+        if (stack.isEmpty() || mc.world == null) return 0;
+        // Fix Enchantment chuẩn cho bản mới
+        int modifierBlast = EnchantmentHelper.getLevel(mc.world.getRegistryManager().get(Enchantments.BLAST_PROTECTION.getRegistryRef()).getEntry(Enchantments.BLAST_PROTECTION).get(), stack);
+        int modifier = EnchantmentHelper.getLevel(mc.world.getRegistryManager().get(Enchantments.PROTECTION.getRegistryRef()).getEntry(Enchantments.PROTECTION).get(), stack);
         return modifierBlast * 2 + modifier;
     }
-      }
+}
