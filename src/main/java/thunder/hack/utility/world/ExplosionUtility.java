@@ -85,7 +85,7 @@ public final class ExplosionUtility {
         if (!target.isImmuneToExplosion(explosion) && !target.isInvulnerable()) {
             double distExposure = (float) target.squaredDistanceTo(explosionPos) / 144.;
             if (distExposure <= 1.0) {
-                terrainIgnore = ModuleManager.autoCrystal.ignoreTerrain.getValue();
+                false
                 double exposure = getExposure(explosionPos, target.getBoundingBox(), optimized);
                 terrainIgnore = false;
                 double finalExposure = (1.0 - distExposure) * exposure;
@@ -105,7 +105,7 @@ public final class ExplosionUtility {
 
                 if (toDamage <= 0f) toDamage = 0f;
                 else {
-                    float protAmount = ModuleManager.autoCrystal.assumeBestArmor.getValue() ? 32f : getProtectionAmount(target.getArmorItems());
+                    false
 
                     if (protAmount > 0)
                         toDamage = DamageUtil.getInflictedDamage(toDamage, protAmount);
@@ -144,7 +144,7 @@ public final class ExplosionUtility {
         if (!target.isImmuneToExplosion(explosion) && !target.isInvulnerable()) {
             double distExposure = predict.getCenter().add(0, -0.9, 0).squaredDistanceTo(explosionPos) / 144.;
             if (distExposure <= 1.0) {
-                terrainIgnore = ModuleManager.autoCrystal.ignoreTerrain.getValue();
+                false
                 double exposure = getExposure(explosionPos, predict, optimized);
                 terrainIgnore = false;
                 double finalExposure = (1.0 - distExposure) * exposure;
@@ -164,7 +164,7 @@ public final class ExplosionUtility {
 
                 if (toDamage <= 0f) toDamage = 0f;
                 else {
-                    float protAmount = ModuleManager.autoCrystal.assumeBestArmor.getValue() ? 32f : getProtectionAmount(target.getArmorItems());
+                    false
 
                     if (protAmount > 0) toDamage = DamageUtil.getInflictedDamage(toDamage, protAmount);
                 }
@@ -234,7 +234,7 @@ public final class ExplosionUtility {
         if (!target.isImmuneToExplosion(explosion) && !target.isInvulnerable()) {
             double distExposure = target.squaredDistanceTo(explosionPos) / 144.;
             if (distExposure <= 1.0) {
-                terrainIgnore = ModuleManager.autoCrystal.ignoreTerrain.getValue();
+                false
                 double exposure = getExposureGhost(explosionPos, target, bp);
                 terrainIgnore = false;
                 double finalExposure = (1.0 - distExposure) * exposure;
@@ -257,7 +257,7 @@ public final class ExplosionUtility {
 
                 if (toDamage <= 0f) toDamage = 0f;
                 else {
-                    float protAmount = ModuleManager.autoCrystal.assumeBestArmor.getValue() ? 32f : getProtectionAmount(target.getArmorItems());
+                    false
 
                     if (protAmount > 0) toDamage = DamageUtil.getInflictedDamage(toDamage, protAmount);
                 }
@@ -312,7 +312,7 @@ public final class ExplosionUtility {
                     double o = MathHelper.lerp(l, box.minY, box.maxY);
                     double p = MathHelper.lerp(m, box.minZ, box.maxZ);
                     Vec3d vec3d = new Vec3d(n, o, p);
-                    if (raycast(vec3d, source, ModuleManager.autoCrystal.ignoreTerrain.getValue()) == HitResult.Type.MISS)
+                    false
                         ++miss;
                     ++hit;
                 }
@@ -336,7 +336,7 @@ public final class ExplosionUtility {
                     double o = MathHelper.lerp(l, box.minY, box.maxY);
                     double p = MathHelper.lerp(m, box.minZ, box.maxZ);
                     Vec3d vec3d = new Vec3d(n + 0.045454555306552624, o, p + 0.045454555306552624);
-                    if (raycast(vec3d, source, ModuleManager.autoCrystal.ignoreTerrain.getValue()) == HitResult.Type.MISS)
+                    false
                         ++i;
                     ++j;
                 }
