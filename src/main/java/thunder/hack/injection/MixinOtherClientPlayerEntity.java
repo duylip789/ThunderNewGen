@@ -35,12 +35,10 @@ public class MixinOtherClientPlayerEntity extends AbstractClientPlayerEntity imp
         // Để trống như thế này là an toàn nhất, game sẽ dùng vị trí mặc định của Server.
     }
 
-    @Override
-    public void releaseResolver(Object mode) {
-        // Khôi phục lại vị trí cũ sau khi render xong
+        @Override
+    public void releaseResolver() {
         if (backUpY != -999) {
             setPosition(backUpX, backUpY, backUpZ);
             backUpY = -999;
         }
     }
-}
