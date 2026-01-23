@@ -282,20 +282,6 @@ public class Aura extends Module {
         sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
     }
 
-    public void resolvePlayers() {
-        if (resolver.not(Resolver.Off))
-            for (PlayerEntity player : mc.world.getPlayers())
-                if (player instanceof OtherClientPlayerEntity)
-                   // ((IOtherClientPlayerEntity) player).resolve(resolver.getValue());
-    }
-
-    public void restorePlayers() {
-        if (resolver.not(Resolver.Off))
-            for (PlayerEntity player : mc.world.getPlayers())
-                if (player instanceof OtherClientPlayerEntity)
-                  //  ((IOtherClientPlayerEntity) player).releaseResolver();
-    }
-
     public void handleKill() {
         if (target instanceof LivingEntity && (((LivingEntity) target).getHealth() <= 0 || ((LivingEntity) target).isDead()))
             Managers.NOTIFICATION.publicity("Aura", isRu() ? "Цель успешно нейтрализована!" : "Target successfully neutralized!", 3, Notification.Type.SUCCESS);
