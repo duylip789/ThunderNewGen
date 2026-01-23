@@ -18,27 +18,25 @@ public class TargetESP extends Module {
     private final Setting<Float> size = new Setting<>("Size", 1.0f, 0.1f, 2.0f);
 
     public TargetESP() {
-        super("TargetESP", "Hien thi Target", Category.RENDER);
+        // FIX LỖI 1: Constructor chỉ nhận 2 tham số (String, Category)
+        super("TargetESP", Category.RENDER);
     }
 
     private enum Mode {
         Circle, Cube, Ghost
     }
 
-    // Ở bản 1.21 NewGen, Module đã có sẵn hàm onRender3D 
-    // Chúng ta không cần import EventRender3D hay WorldRenderEvent nữa
     @Override
     public void onRender3D(MatrixStack stack) {
-        // Lấy mục tiêu từ Aura
         Entity target = ModuleManager.aura.target;
-        
         if (target == null) return;
 
         Color c = color.getValue();
 
         switch (mode.getValue()) {
             case Circle:
-                Render3DEngine.drawCircle3D(stack, target, size.getValue(), c);
+                // FIX LỖI 2: drawCircle3D yêu cầu: MatrixStack, Entity, float radius, int color, int segments, boolean filled, int fade
+                Render3DEngine.drawCircle3D(stack, target, size.getValue(), c.getRGB(), 30, false, 1);
                 break;
             case Cube:
                 Box box = target.getBoundingBox();
@@ -46,7 +44,7 @@ public class TargetESP extends Module {
                 Render3DEngine.drawBoxOutline(box, c, 2.0f);
                 break;
             case Ghost:
-                // Hàm này bạn đã có trong Render3DEngine.java đã upload
+                // Chế độ Ghost gọi thẳng hàm bạn đã có trong Render3DEngine
                 Render3DEngine.drawTargetEsp(stack, target);
                 break;
         }
