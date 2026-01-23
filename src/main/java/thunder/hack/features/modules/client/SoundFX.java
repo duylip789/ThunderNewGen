@@ -3,8 +3,8 @@ package thunder.hack.features.modules.client;
 import meteordevelopment.orbit.EventHandler;
 import org.jetbrains.annotations.NotNull;
 import thunder.hack.core.Managers;
-import thunder.hack.events.impl.EventDeath;
 import thunder.hack.events.impl.EventAttack;
+import thunder.hack.events.impl.EventDeath;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
@@ -31,11 +31,8 @@ public final class SoundFX extends Module {
     @EventHandler
     @SuppressWarnings("unused")
     public void onDeath(EventDeath e) {
-        if (Aura.target != null && Aura.target == e.getPlayer() && killSound.is(KillSound.Custom)) {
-            Managers.SOUND.playSound("kill");
-            return;
-        }
-        if (AutoCrystal.target != null && AutoCrystal.target == e.getPlayer() && killSound.is(KillSound.Custom)) {
+        // Chỉ check Aura target, đã xóa đoạn AutoCrystal bị lỗi
+        if (Aura.target != null && Aura.target == e.getPlayer() && killSound.getValue() == KillSound.Custom) {
             Managers.SOUND.playSound("kill");
         }
     }
