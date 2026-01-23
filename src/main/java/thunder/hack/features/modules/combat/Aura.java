@@ -17,7 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public class Aura extends Module {
-    // --- CÀI ĐẶT CHÍNH (THEO THỨ TỰ TRONG ẢNH) ---
+    // --- CÀI ĐẶT CHÍNH ---
     public final Setting<Float> range = new Setting<>("Range", 3.1f, 1.0f, 6.0f);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 2.0f, 0.0f, 6.0f);
     public final Setting<Float> elytraRangeValue = new Setting<>("ElytraRange", 0.5f, 0.0f, 6.0f);
@@ -72,7 +72,7 @@ public class Aura extends Module {
         super("Aura", Category.COMBAT);
     }
 
-    // Các hàm phụ trợ để fix lỗi PearlChaser, TriggerBot, FakePlayer...
+    // Các hàm phụ trợ fix lỗi
     public void pause() {}
     
     public float getAttackCooldown() {
@@ -96,12 +96,12 @@ public class Aura extends Module {
     }
 
     private Entity findTarget() {
-        // Fix lỗi stream() bằng cách convert Iterable sang List trước
         List<Entity> allEntities = new ArrayList<>();
         mc.world.getEntities().forEach(allEntities::add);
 
+        // Đã sửa lỗi thiếu dấu chấm và dấu chấm phẩy ở đây
         List<Entity> targets = allEntities.stream()
-                filter(entity -> entity instanceof PlayerEntity && entity != mc.player && entity.isAlive())
+                .filter(entity -> entity instanceof PlayerEntity && entity != mc.player && entity.isAlive())
                 .filter(entity -> mc.player.distanceTo(entity) <= range.getValue())
                 .toList();
 
@@ -123,7 +123,6 @@ public class Aura extends Module {
         public double x, y, z;
         public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
         
-        // Thêm hàm này để fix lỗi MixinEntityLiving
         public boolean shouldRemove() {
             return false;
         }
