@@ -22,11 +22,10 @@ public class TargetESP extends Module {
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        // Lấy Aura an toàn để không bị crash khi khởi động
-        Aura aura = ModuleManager.get(Aura.class);
-        if (aura == null || aura.target == null) return;
+        // Fix lỗi conversion: Dùng trực tiếp ModuleManager.aura
+        if (ModuleManager.aura == null || ModuleManager.aura.target == null) return;
 
-        Entity target = aura.target;
+        Entity target = ModuleManager.aura.target;
         renderTargetCircle(stack, target);
     }
 
@@ -38,22 +37,21 @@ public class TargetESP extends Module {
 
         stack.push();
 
-        // Tính toán vị trí nội suy (mượt mà khi entity di chuyển)
-        double x = entity.lastRenderX + (entity.getX() - entity.lastRenderX) * mc.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().x;
-        double y = entity.lastRenderY + (entity.getY() - entity.lastRenderY) * mc.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().y;
-        double z = entity.lastRenderZ + (entity.getZ() - entity.lastRenderZ) * mc.getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().z;
+        // FIX 1.21: Minecraft 1.21 dùng RenderTickCounter thay vì getTickDelta() trực tiếp
+        float tickDelta = mc.getRenderTickCounter().getTickDelta(false);
 
-        stack.translate(x, y + 0.1, z); // Nâng lên 0.1 để không bị chìm dưới đất
+        double x = entity.lastRenderX + (entity.getX() - entity.lastRenderX) * tickDelta - mc.getEntityRenderDispatcher().camera.getPos().x;
+        double y = entity.lastRenderY + (entity.getY() - entity.lastRenderY) * tickDelta - mc.getEntityRenderDispatcher().camera.getPos().y;
+        double z = entity.lastRenderZ + (entity.getZ() - entity.lastRenderZ) * tickDelta - mc.getEntityRenderDispatcher().camera.getPos().z;
 
-        // Hiệu ứng xoay tròn mượt mà
+        stack.translate(x, y + 0.1, z);
+
         float angle = (float) (System.currentTimeMillis() % 2000) / 2000f;
         stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle * 360f));
 
+        // FIX 1.21: Cách sử dụng Tessellator và BufferBuilder mới hoàn toàn
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuffer();
-        
-        // Bắt đầu vẽ vòng tròn 3D bằng LINE_STRIP (Phù hợp GL4ES Mobile & PC)
-        bufferBuilder.begin(VertexFormat.DrawMode.LINE_STRIP, VertexFormats.POSITION_COLOR);
+        BufferBuilder bufferBuilder = tessellator.begin(VertexFormat.DrawMode.LINE_STRIP, VertexFormats.POSITION_COLOR);
 
         Color c = color.getValue();
         float radius = size.getValue();
@@ -63,10 +61,11 @@ public class TargetESP extends Module {
             double cx = Math.cos(radians) * radius;
             double cz = Math.sin(radians) * radius;
             bufferBuilder.vertex(stack.peek().getPositionMatrix(), (float)cx, 0, (float)cz)
-                    .color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha()).next();
+                    .color(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f, c.getAlpha() / 255f);
         }
 
-        tessellator.draw();
+        // FIX 1.21: Dùng BufferRenderer.drawWithGlobalProgram cho 1.21
+        BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
 
         stack.pop();
         RenderSystem.enableCull();
