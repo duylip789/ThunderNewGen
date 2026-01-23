@@ -41,6 +41,142 @@ public class Render3DEngine {
     private static float circleStep;
 
     // getTickDelta() -> mc.getRenderTickCounter().getTickDelta(true)
+    public static @NotNull Vector3f getNormal(float x1, float y1, float z1, float x2, float y2, float z2) {
+        float xNormal = x2 - x1;
+        float yNormal = y2 - y1;
+        float zNormal = z2 - z1;
+        float normalSqrt = MathHelper.sqrt(xNormal * xNormal + yNormal * yNormal + zNormal * zNormal);
+    public static void drawTargetEsp(MatrixStack stack, @NotNull Entity target) {
+    // 1. Lấy vị trí mượt (Interpolation)
+    double x = target.prevX + (target.getX() - target.prevX) * getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getX();
+    double y = target.prevY + (target.getY() - target.prevY) * getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getY();
+    double z = target.prevZ + (target.getZ() - target.prevZ) * getTickDelta() - mc.getEntityRenderDispatcher().camera.getPos().getZ();
+
+    stack.push();
+    stack.translate(x, y, z);
+    setupRender(); // Thiết lập blend màu
+    RenderSystem.disableCull();
+    RenderSystem.disableDepthTest();
+    RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+
+    // Vẽ 3 dải lụa lệch pha nhau để tạo độ dày
+    for (int d = 0; d < 3; d++) {
+        BufferBuilder bufferBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        Matrix4f matrix = stack.peek().getPositionMatrix();
+        float offsetPhase = d * 120f;
+
+        for (int i = 0; i <= 360; i += 5) {
+            // Biến thời gian để dải lụa chuyển động xoay
+            float time = (System.currentTimeMillis() - ThunderHack.initTime) / 5f;
+            double rad = Math.toRadians(i + time + offsetPhase);
+            
+            // Công thức bay "lung tung": dùng sin để đổi độ cao liên tục
+            double sinY = Math.sin(Math.toRadians(i * 3 + time * 4)) * 0.4;
+            double currentY = (target.getHeight() * (i / 360f)) + sinY;
+
+            // Lấy màu từ HudEditor giống như ảnh
+            int color = Render2DEngine.injectAlpha(HudEditor.getColor(i), 200).getRGB();
+            int fadeOut = Render2DEngine.injectAlpha(HudEditor.getColor(i), 0).getRGB();
+
+            double cx = Math.cos(rad) * 0.8;
+            double cz = Math.sin(rad) * 0.8;
+
+            // Vẽ dải 3D: Một cạnh đậm, một cạnh mờ để tạo hiệu ứng mượt
+            bufferBuilder.vertex(matrix, (float) cx, (float) currentY, (float) cz).color(color);
+            bufferBuilder.vertex(matrix, (float) cx, (float) (currentY + 0.2f), (float) cz).color(fadeOut);
+        }
+        Render2DEngine.endBuilding(bufferBuilder);
+    }
+
+    RenderSystem.enableCull();
+    RenderSystem.enableDepthTest();
+    endRender();
+    stack.pop();
+    }
+        
+        return new Vector3f(xNormal / normalSqrt, yNormal / normalSqrt, zNormal / normalSqrt);
+    }
+
+    public static @NotNull MatrixStack matrixFrom(double x, double y, double z) {
+        MatrixStack matrices = new MatrixStack();
+
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0F));
+
+        matrices.translate(x - camera.getPos().x, y - camera.getPos().y, z - camera.getPos().z);
+
+        return matrices;
+    }
+
+    public static void setupRender() {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+    }
+
+    public static void endRender() {
+        RenderSystem.disableBlend();
+    }
+
+    public static void drawTargetEsp(MatrixStack stack, @NotNull Entity target) {
+        ArrayList<Vec3d> vecs = new ArrayList<>();
+        ArrayList<Vec3d> vecs1 = new ArrayList<>();
+        ArrayList<Vec3d> vecs2 = new ArrayList<>();
+
+        double x = target.prevX + (target.getX() - target.prevX) * getTickDelta()
+                - mc.getEntityRenderDispatcher().camera.getPos().getX();
+        double y = target.prevY + (target.getY() - target.prevY) * getTickDelta()
+                - mc.getEntityRenderDispatcher().camera.getPos().getY();
+        double z = target.prevZ + (target.getZ() - target.prevZ) * getTickDelta()
+                - mc.getEntityRenderDispatcher().camera.getPos().getZ();
+
+
+        double height = target.getHeight();
+
+        for (int i = 0; i <= 361; ++i) {
+            double v = Math.sin(Math.toRadians(i));
+            double u = Math.cos(Math.toRadians(i));
+            Vec3d vec = new Vec3d((float) (u * 0.5f), height, (float) (v * 0.5f));
+            vecs.add(vec);
+
+            double v1 = Math.sin(Math.toRadians((i + 120) % 360));
+            double u1 = Math.cos(Math.toRadians(i + 120) % 360);
+            Vec3d vec1 = new Vec3d((float) (u1 * 0.5f), height, (float) (v1 * 0.5f));
+            vecs1.add(vec1);
+
+            double v2 = Math.sin(Math.toRadians((i + 240) % 360));
+            double u2 = Math.cos(Math.toRadians((i + 240) % 360));
+            Vec3d vec2 = new Vec3d((float) (u2 * 0.5f), height, (float) (v2 * 0.5f));
+            vecs2.add(vec2);
+            height -= 0.004f;
+        }
+
+
+        stack.push();
+        stack.translate(x, y, z);
+        BufferBuilder bufferBuilder;
+        setupRender();
+        RenderSystem.disableCull();
+        RenderSystem.disableDepthTest();
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        bufferBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+
+        Matrix4f matrix = stack.peek().getPositionMatrix();
+
+        for (int j = 0; j < vecs.size() - 1; ++j) {
+            float alpha = 1f - (((float) j + ((System.currentTimeMillis() - ThunderHack.initTime) / 5f)) % 360) / 60f;
+            bufferBuilder.vertex(matrix, (float) vecs.get(j).x, (float) vecs.get(j).y, (float) vecs.get(j).z).color(Render2DEngine.injectAlpha(HudEditor.getColor((int) (j / 20f)), (int) (alpha * 255)).getRGB());
+            bufferBuilder.vertex(matrix, (float) vecs.get(j + 1).x, (float) vecs.get(j + 1).y + 0.1f, (float) vecs.get(j + 1).z).color(Render2DEngine.injectAlpha(HudEditor.getColor((int) (j / 20f)), (int) (alpha * 255f)).getRGB());
+        }
+        Render2DEngine.endBuilding(bufferBuilder);
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        bufferBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        for (int j = 0; j < vecs1.size() - 1; ++j) {
+            float alpha = 1f - (((float) j + ((System.currentTimeMillis() - ThunderHack.initTime) / 5f)) % 360) / 60f;
+            bufferBuilder.vertex(matrix, (float) vecs1.get(j).x, (float) vecs1.get(j).y, (float) vecs1.get(j).z).color(Render2DEngine.injectAlpha(HudEditor.getColor((int) (j / 20f)), (int) (alpha * 255)).getRGB());
+            bufferBuilder.vertex(matrix, (float) vecs1.get(j +
 
     public static void onRender3D(MatrixStack stack) {
         if (!FILLED_QUEUE.isEmpty() || !FADE_QUEUE.isEmpty() || !FILLED_SIDE_QUEUE.isEmpty()) {
