@@ -35,9 +35,9 @@ public class TargetESP extends Module {
 
     @Override
     public void onRender3D(MatrixStack stack) {
-        // LẤY AURA AN TOÀN – KHÔNG CRASH
-        Aura aura = ModuleManager.get(Aura.class);
-        if (aura == null) return;
+        // LẤY AURA ĐÚNG KIỂU MODULEMANAGER
+        Module m = ModuleManager.getModuleByName("Aura");
+        if (!(m instanceof Aura aura)) return;
 
         Entity target = aura.target;
         if (target == null) return;
@@ -46,7 +46,6 @@ public class TargetESP extends Module {
 
         switch (mode.getValue()) {
             case Circle -> {
-                // Chuẩn 1.21 – đủ tham số
                 Render3DEngine.drawCircle3D(
                         stack,
                         target,
@@ -54,7 +53,7 @@ public class TargetESP extends Module {
                         c.getRGB(),
                         32,
                         false,
-                        1.0f
+                        1   // ✅ int, KHÔNG phải float
                 );
             }
 
@@ -73,7 +72,6 @@ public class TargetESP extends Module {
             }
 
             case Ghost -> {
-                // Hiệu ứng ESP mặc định của Thunder
                 Render3DEngine.drawTargetEsp(stack, target);
             }
         }
