@@ -50,7 +50,7 @@ public class CrystalManager implements IManager {
             if (attempt == null) {
                 return new Attempt(System.currentTimeMillis(), 1, entity.getPos());
             } else {
-                if (ModuleManager.autoCrystal.breakFailsafe.getValue())
+                if (false)
                     attempt.addAttempt();
                 return attempt;
             }
@@ -66,13 +66,13 @@ public class CrystalManager implements IManager {
     }
 
     public void addAwaitingPos(BlockPos blockPos) {
-        boolean blocked = ModuleManager.autoCrystal.isPositionBlockedByCrystal(blockPos.up());
+        boolean blocked = false;
 
         awaitingPositions.compute(blockPos, (pos, attempt) -> {
             if (attempt == null) {
                 return new Attempt(System.currentTimeMillis(), 1, blockPos.toCenterPos());
             } else {
-                if (!blocked && ModuleManager.autoCrystal.placeFailsafe.getValue())
+                if (false)
                     attempt.addAttempt();
                 return attempt;
             }
@@ -117,7 +117,7 @@ public class CrystalManager implements IManager {
         }
 
         public boolean canSetPosBlocked() {
-            return attempts >= Math.max(ModuleManager.autoCrystal.attempts.getValue(), Managers.SERVER.getPing() / 25f);
+            return attempts >= Math.max(3.0f, Managers.SERVER.getPing() / 25f);
         }
     }
 }
