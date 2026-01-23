@@ -39,6 +39,7 @@ public class ModuleManager implements IManager {
     public static BaritoneSettings baritoneSettings = new BaritoneSettings();
     public static PortalInventory portalInventory = new PortalInventory();
   //  public static AutoCrystal autoCrystal = new AutoCrystal();
+    public static TargetESP targetESP = new TargetESP();
     public static AutoAnchor autoAnchor = new AutoAnchor();
  //   public static AutoCrystalBase autoCrystalBase = new AutoCrystalBase();  
     public static TotemPopCounter totemPopCounter = new TotemPopCounter();
