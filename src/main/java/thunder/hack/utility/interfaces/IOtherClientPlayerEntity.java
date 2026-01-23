@@ -1,9 +1,5 @@
-package thunder.hack.utility.interfaces;
-
-import thunder.hack.features.modules.combat.Aura;
+package thunder.hack.injection.interfaces;
 
 public interface IOtherClientPlayerEntity {
-    void resolve(Object mode);
-
     void releaseResolver();
 }
