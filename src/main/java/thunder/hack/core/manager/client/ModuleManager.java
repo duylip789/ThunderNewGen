@@ -46,7 +46,6 @@ public class ModuleManager implements IManager {
     public static ClientSettings clientSettings = new ClientSettings();
     public static TimerIndicator timerIndicator = new TimerIndicator();
     public static ThunderHackGui thunderHackGui = new ThunderHackGui();
-    public static NoServerRotate noServerRotate = new NoServerRotate();
     public static BreakHighLight breakHighLight = new BreakHighLight();
     public static BlockHighLight blockHighLight = new BlockHighLight();
     public static TotemAnimation totemAnimation = new TotemAnimation();
@@ -64,7 +63,6 @@ public class ModuleManager implements IManager {
     public static TargetStrafe targetStrafe = new TargetStrafe();
     public static RadarRewrite radarRewrite = new RadarRewrite();
     public static PVPResources pvpResources = new PVPResources();
-    public static NoServerSlot noServerSlot = new NoServerSlot();
     public static NoCameraClip noCameraClip = new NoCameraClip();
     public static ClickAction clickAction = new ClickAction();
     public static ItemScroller itemScroller = new ItemScroller();
@@ -83,7 +81,6 @@ public class ModuleManager implements IManager {
     public static WorldTweaks worldTweaks = new WorldTweaks();
     public static VisualRange visualRange = new VisualRange();
     public static Speedometer speedometer = new Speedometer();
-    public static NoJumpDelay noJumpDelay = new NoJumpDelay();
     public static NameProtect nameProtect = new NameProtect();
     public static MiddleClick middleClick = new MiddleClick();
     public static LogoutSpots logoutSpots = new LogoutSpots();
