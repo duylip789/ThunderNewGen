@@ -41,7 +41,6 @@ public class ModuleManager implements IManager {
     public static HotbarReplenish hotbarReplenish = new HotbarReplenish();
     public static DurabilityAlert durabilityAlert = new DurabilityAlert();
     public static CrosshairArrows crosshairArrows = new CrosshairArrows();
-    public static PearlBlockThrow pearlBlockThrow = new PearlBlockThrow();
     public static ChatTranslator chatTranslator = new ChatTranslator();
     public static PacketCanceler packetCanceler = new PacketCanceler();
     public static ClientSettings clientSettings = new ClientSettings();
@@ -123,7 +122,6 @@ public class ModuleManager implements IManager {
     public static TunnelEsp tunnelEsp = new TunnelEsp();
     public static TargetHud targetHud = new TargetHud();
     public static PotionHud potionHud = new PotionHud();
-    public static PearlBait pearlBait = new PearlBait();
     public static LegacyHud legacyHud = new LegacyHud();
     public static HudEditor hudEditor = new HudEditor();
     public static Crosshair crosshair = new Crosshair();
