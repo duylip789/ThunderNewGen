@@ -1,6 +1,7 @@
 package thunder.hack.features.modules.player;
 
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
@@ -13,62 +14,86 @@ import thunder.hack.utility.player.InventoryUtility;
 import thunder.hack.utility.player.SearchInvResult;
 
 public class ClickAction extends Module {
+
     public ClickAction() {
         super("ClickAction", Category.PLAYER);
     }
 
-    // Cài đặt bật tắt
-    public final Setting<Boolean> pearl = new Setting<>("Pearl", true);
-    public final Setting<Boolean> xp = new Setting<>("XP", true);
+    // ===== SETTINGS =====
+    public final Setting<Boolean> pearl =
+            new Setting<>("Pearl", true);
 
-    // Dùng kiểu Integer cho phím bấm để tránh lỗi class Bind không tồn tại
-    // Mặc định: Pearl là Chuột giữa (GLFW_MOUSE_BUTTON_MIDDLE), XP là phím X
-    public final Setting<Integer> pearlKey = new Setting<>("Pearl Key", GLFW.GLFW_MOUSE_BUTTON_MIDDLE, 0, 1000, v -> pearl.getValue());
-    public final Setting<Integer> xpKey = new Setting<>("XP Key", GLFW.GLFW_KEY_X, 0, 1000, v -> xp.getValue());
+    public final Setting<Boolean> xp =
+            new Setting<>("XP", true);
+
+    // Mouse Middle = M2, XP = X (đúng như ảnh)
+    public final Setting<Integer> pearlKey =
+            new Setting<>("Pearl Key", GLFW.GLFW_MOUSE_BUTTON_MIDDLE, 0, 1000, v -> pearl.getValue());
+
+    public final Setting<Integer> xpKey =
+            new Setting<>("XP Key", GLFW.GLFW_KEY_X, 0, 1000, v -> xp.getValue());
 
     private boolean pearlPressed = false;
 
+    // ===== MAIN LOGIC =====
     @EventHandler
     public void onSync(EventSync e) {
         if (mc.player == null || mc.world == null) return;
 
-        // Xử lý XP: Giữ phím là đập liên tục (Bypass Grim/Matrix)
+        // ===== XP: giữ phím spam =====
         if (xp.getValue() && isKeyDown(xpKey.getValue())) {
-            performSilentAction(Items.EXPERIENCE_BOTTLE);
+            silentUse(Items.EXPERIENCE_BOTTLE);
         }
 
-        // Xử lý Pearl: Nhấn 1 lần ném 1 quả
-        boolean isPearlDown = isKeyDown(pearlKey.getValue());
-        if (pearl.getValue() && isPearlDown && !pearlPressed) {
-            performSilentAction(Items.ENDER_PEARL);
+        // ===== PEARL: bấm 1 lần 1 quả =====
+        boolean down = isKeyDown(pearlKey.getValue());
+        if (pearl.getValue() && down && !pearlPressed) {
+            silentUse(Items.ENDER_PEARL);
             pearlPressed = true;
-        } else if (!isPearlDown) {
+        }
+
+        if (!down) {
             pearlPressed = false;
         }
     }
 
-    private void performSilentAction(net.minecraft.item.Item item) {
+    // ===== SILENT USE (1.21 SAFE) =====
+    private void silentUse(Item item) {
         SearchInvResult result = InventoryUtility.findItemInHotBar(item);
-        
-        if (result.found()) {
-            int oldSlot = mc.player.getInventory().selectedSlot;
-            int itemSlot = result.slot();
+        if (!result.found()) return;
 
-            if (itemSlot != oldSlot) {
-                // Silent Switch thần thánh: Server thấy đổi, client vẫn cầm kiếm
-                sendPacket(new UpdateSelectedSlotC2SPacket(itemSlot));
-                sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0));
-                sendPacket(new UpdateSelectedSlotC2SPacket(oldSlot));
-            } else {
-                sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0));
-            }
+        int oldSlot = mc.player.getInventory().selectedSlot;
+        int slot = result.slot();
+
+        if (slot != oldSlot) {
+            sendPacket(new UpdateSelectedSlotC2SPacket(slot));
+            sendUsePacket();
+            sendPacket(new UpdateSelectedSlotC2SPacket(oldSlot));
+        } else {
+            sendUsePacket();
         }
     }
 
-    // Hàm kiểm tra phím bấm thủ công để không phụ thuộc vào class Bind
+    // ===== USE PACKET (1.21 FIX) =====
+    private void sendUsePacket() {
+        sendPacket(new PlayerInteractItemC2SPacket(
+                Hand.MAIN_HAND,
+                0,
+                mc.player.getYaw(),
+                mc.player.getPitch()
+        ));
+    }
+
+    // ===== KEY CHECK (NO BIND CLASS) =====
     private boolean isKeyDown(int key) {
-        if (key < 0) return false;
-        if (key < 8) return org.lwjgl.glfw.GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), key) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
-        return org.lwjgl.glfw.GLFW.glfwGetKey(mc.getWindow().getHandle(), key) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        long handle = mc.getWindow().getHandle();
+
+        // Mouse
+        if (key >= 0 && key <= 7) {
+            return GLFW.glfwGetMouseButton(handle, key) == GLFW.GLFW_PRESS;
+        }
+
+        // Keyboard
+        return GLFW.glfwGetKey(handle, key) == GLFW.GLFW_PRESS;
     }
 }
