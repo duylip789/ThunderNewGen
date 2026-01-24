@@ -3,7 +3,6 @@ package thunder.hack.injection;
 import net.minecraft.item.Item;
 import net.minecraft.item.tooltip.TooltipType;
 import thunder.hack.core.manager.client.ModuleManager;
-import thunder.hack.features.modules.render.Tooltips;
 import net.minecraft.block.ShulkerBoxBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
