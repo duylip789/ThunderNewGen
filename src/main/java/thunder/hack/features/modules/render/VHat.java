@@ -8,13 +8,15 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import thunder.hack.core.Managers;
-import thunder.hack.events.impl.render.Render3DEvent; // Thử lại đường dẫn này
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.ColorSetting;
 import meteordevelopment.orbit.EventHandler;
 import java.awt.Color;
+
+// Import cái này để lấy MatrixStack nếu Event bị lỗi
+import thunder.hack.events.impl.Render3DEvent; 
 
 public class VHat extends Module {
     public VHat() { super("V-Hat", Category.RENDER); }
@@ -29,11 +31,11 @@ public class VHat extends Module {
     public void onRender3D(Render3DEvent event) {
         if (mc.world == null || mc.player == null) return;
         Color finalColor = syncColor.getValue() ? HudEditor.getColor(1) : color.getValue().getColorObject();
+        
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player.isInvisible() || player.isSpectator()) continue;
-            if (friendsOnly.getValue()) {
-                if (player != mc.player && !Managers.FRIEND.isFriend(player.getName().getString())) continue;
-            }
+            if (friendsOnly.getValue() && player != mc.player && !Managers.FRIEND.isFriend(player.getName().getString())) continue;
+
             drawHat(event.getMatrixStack(), player, event.getTickDelta(), finalColor);
         }
     }
@@ -42,28 +44,26 @@ public class VHat extends Module {
         double x = MathHelper.lerp(tickDelta, player.lastRenderX, player.getX()) - mc.gameRenderer.getCamera().getPos().getX();
         double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY()) - mc.gameRenderer.getCamera().getPos().getY();
         double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ()) - mc.gameRenderer.getCamera().getPos().getZ();
-        float yaw = MathHelper.lerp(tickDelta, player.prevHeadYaw, player.headYaw);
-        float pitch = MathHelper.lerp(tickDelta, player.prevPitch, player.getPitch());
+        
         matrices.push();
         matrices.translate(x, y + player.getHeight() + 0.1, z);
-        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-yaw));
-        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-MathHelper.lerp(tickDelta, player.prevHeadYaw, player.headYaw)));
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(MathHelper.lerp(tickDelta, player.prevPitch, player.getPitch())));
+
         RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableCull();
-        RenderSystem.depthMask(false);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         Tessellator tessellator = Tessellator.getInstance();
-        Matrix4f matrix = matrices.peek().getPositionMatrix();
         BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
-        buffer.vertex(matrix, 0, height.getValue(), 0).color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+
+        buffer.vertex(matrix, 0, height.getValue(), 0).color(c.getRGB());
         for (int i = 0; i <= 32; i++) {
-            double angle = i * 2 * Math.PI / 32;
-            buffer.vertex(matrix, (float)(Math.cos(angle)*scale.getValue()), 0, (float)(Math.sin(angle)*scale.getValue())).color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha() / 2);
+            float px = (float) (Math.cos(i * 2 * Math.PI / 32) * scale.getValue());
+            float pz = (float) (Math.sin(i * 2 * Math.PI / 32) * scale.getValue());
+            buffer.vertex(matrix, px, 0, pz).color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha() / 2);
         }
         BufferRenderer.drawWithGlobalProgram(buffer.end());
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
+        RenderSystem.disableBlend();
         matrices.pop();
     }
 }
