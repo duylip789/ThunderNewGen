@@ -176,7 +176,6 @@ public class ModuleManager implements IManager {
     public static AutoWalk autoWalk = new AutoWalk();
     public static AutoSign autoSign = new AutoSign();
     public static BlockESP blockESP = new BlockESP();
-    public static SafeWalk safeWalk = new SafeWalk();
     public static Windows windows = new Windows();
     public static AutoEat autoEat = new AutoEat();
     public static AntiAFK antiAFK = new AntiAFK();
