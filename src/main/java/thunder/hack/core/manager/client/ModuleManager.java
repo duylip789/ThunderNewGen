@@ -126,7 +126,6 @@ public class ModuleManager implements IManager {
     public static ChatUtils chatUtils = new ChatUtils();
     public static AutoTotem autoTotem = new AutoTotem();
     public static AutoLeave autoLeave = new AutoLeave();
-    public static AutoFlyme autoFlyme = new AutoFlyme();
     public static AutoArmor autoArmor = new AutoArmor();
     public static Cooldowns cooldowns = new Cooldowns();
     public static TapeMouse tapeMouse = new TapeMouse();
