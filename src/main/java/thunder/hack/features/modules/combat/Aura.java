@@ -147,7 +147,7 @@ public class Aura extends Module {
     public final Setting<Boolean> ignoreShield = new Setting<>("AttackShieldingEntities", true).addToGroup(targets);
 
     public static Entity target;
-    private EntityLivingBase target;
+    private LivingEntity target;
     public float rotationYaw;
     public float rotationPitch;
     public float pitchAcceleration = 1f;
