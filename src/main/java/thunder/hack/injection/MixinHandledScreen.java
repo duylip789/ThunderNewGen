@@ -35,7 +35,6 @@ import thunder.hack.core.Core;
 import thunder.hack.core.manager.client.ModuleManager;
 import thunder.hack.gui.misc.PeekScreen;
 import thunder.hack.features.modules.Module;
-import thunder.hack.features.modules.render.Tooltips;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.render.Render2DEngine;
 import thunder.hack.utility.render.TextureStorage;
@@ -45,7 +44,6 @@ import java.util.*;
 import java.util.List;
 
 import static thunder.hack.features.modules.Module.mc;
-import static thunder.hack.features.modules.render.Tooltips.hasItems;
 @Mixin(value = {HandledScreen.class})
 public abstract class MixinHandledScreen<T extends ScreenHandler> extends Screen implements ScreenHandlerProvider<T> {
 
