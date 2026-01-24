@@ -50,7 +50,6 @@ public class ModuleManager implements IManager {
     public static NoServerRotate noServerRotate = new NoServerRotate();
     public static BreakHighLight breakHighLight = new BreakHighLight();
     public static BlockHighLight blockHighLight = new BlockHighLight();
-    public static MouseElytraFix mouseElytraFix = new MouseElytraFix();
     public static TotemAnimation totemAnimation = new TotemAnimation();
     public static PortalGodMode portalGodMode = new PortalGodMode();
     public static OptifineCapes optifineCapes = new OptifineCapes();
@@ -126,7 +125,6 @@ public class ModuleManager implements IManager {
     public static TargetHud targetHud = new TargetHud();
     public static PotionHud potionHud = new PotionHud();
     public static PearlBait pearlBait = new PearlBait();
-    public static MultiTask multitask = new MultiTask();
     public static LegacyHud legacyHud = new LegacyHud();
     public static HudEditor hudEditor = new HudEditor();
     public static Crosshair crosshair = new Crosshair();
