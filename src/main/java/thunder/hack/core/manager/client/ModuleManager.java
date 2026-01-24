@@ -54,7 +54,6 @@ public class ModuleManager implements IManager {
     public static NoEntityTrace noEntityTrace = new NoEntityTrace();
     public static MessageAppend messageAppend = new MessageAppend();
     public static ElytraReplace elytraReplace = new ElytraReplace();
-    public static ChorusExploit chorusExploit = new ChorusExploit();
     public static AntiServerAdd antiServerAdd = new AntiServerAdd();
     public static TridentBoost tridentBoost = new TridentBoost();
     public static FixHP fixHP = new FixHP();
@@ -67,7 +66,6 @@ public class ModuleManager implements IManager {
     public static ClickAction clickAction = new ClickAction();
     public static ItemScroller itemScroller = new ItemScroller();
     public static HitParticles hitParticles = new HitParticles();
-    public static EbatteSratte ebatteSratte = new EbatteSratte();
     public static ChestStealer chestStealer = new ChestStealer();
     public static AutoTpAccept autoTpAccept = new AutoTpAccept();
     public static AntiServerRP antiServerRP = new AntiServerRP();
