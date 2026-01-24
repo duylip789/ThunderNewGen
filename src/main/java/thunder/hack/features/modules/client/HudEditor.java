@@ -45,10 +45,8 @@ public final class HudEditor extends Module {
     Color c1 = new Color(0, 251, 255); // #00FBFF
     Color c2 = new Color(0, 68, 255);  // #0044FF
     return Render2DEngine.TwoColoreffect(c1, c2, colorSpeed.getValue(), count);
-             }
-                    Render2DEngine.TwoColoreffect(hcolor1.getValue().getColorObject(), acolor.getValue().getColorObject(), colorSpeed.getValue(), count);
-            case Analogous ->
-                    Render2DEngine.interpolateColorsBackAndForth(colorSpeed.getValue(), count, hcolor1.getValue().getColorObject(), Render2DEngine.getAnalogousColor(acolor.getValue().getColorObject()), true);
+             }  Render2DEngine.TwoColoreffect(hcolor1.getValue().getColorObject(), acolor.getValue().getColorObject(), colorSpeed.getValue(), count);
+            case Analogous -> Render2DEngine.interpolateColorsBackAndForth(colorSpeed.getValue(), count, hcolor1.getValue().getColorObject(), Render2DEngine.getAnalogousColor(acolor.getValue().getColorObject()), true);
             default -> hcolor1.getValue().getColorObject();
         };
     }
