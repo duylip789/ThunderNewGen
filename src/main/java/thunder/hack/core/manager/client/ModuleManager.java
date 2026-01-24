@@ -34,7 +34,6 @@ public class ModuleManager implements IManager {
     public static AntiPacketException antiPacketException = new AntiPacketException();
     public static InventoryCleaner inventoryCleaner = new InventoryCleaner();
     public static NoCommentExploit noCommentExploit = new NoCommentExploit();
-    public static NoWaterCollision noWaterCollision = new NoWaterCollision();
     public static BaritoneSettings baritoneSettings = new BaritoneSettings();
     public static PortalInventory portalInventory = new PortalInventory();
   //  public static AutoCrystal autoCrystal = new AutoCrystal();
