@@ -122,7 +122,6 @@ public class ModuleManager implements IManager {
     public static Companion companion = new Companion();
     public static AntiCrash antiCrash = new AntiCrash();
     public static Velocity velocity = new Velocity();
-    public static Tooltips tooltips = new Tooltips();
     public static Surround surround = new Surround();
     public static PopChams popChams = new PopChams();
     public static NoRender noRender = new NoRender();
