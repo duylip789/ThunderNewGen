@@ -65,8 +65,7 @@ public class MixinClientPlayerInteractionManager {
             cir.setReturnValue(ActionResult.PASS);
         }
 
-                && ((mc.player.getOffHandStack().getItem() == Items.PLAYER_HEAD && hand == Hand.OFF_HAND)
-                || (mc.player.getMainHandStack().getItem() == Items.PLAYER_HEAD && hand == Hand.MAIN_HAND))) {
+                 {
 
             cir.setReturnValue(ActionResult.PASS);
         }
