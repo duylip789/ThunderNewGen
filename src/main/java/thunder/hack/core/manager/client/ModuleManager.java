@@ -64,7 +64,6 @@ public class ModuleManager implements IManager {
     public static ElytraReplace elytraReplace = new ElytraReplace();
     public static ChorusExploit chorusExploit = new ChorusExploit();
     public static AntiServerAdd antiServerAdd = new AntiServerAdd();
-    public static AntiBallPlace antiBallPlace = new AntiBallPlace();
     public static TridentBoost tridentBoost = new TridentBoost();
     public static FixHP fixHP = new FixHP();
     public static FakeLag fakeLag = new FakeLag();
@@ -170,7 +169,6 @@ public class ModuleManager implements IManager {
     public static AutoBuff autoBuff = new AutoBuff();
     public static AutoAuth autoAuth = new AutoAuth();
     public static ArmorHud armorHud = new ArmorHud();
-    public static AirPlace airPlace = new AirPlace();
     public static SelfTrap selfTrap = new SelfTrap();
     public static AutoWalk autoWalk = new AutoWalk();
     public static AutoSign autoSign = new AutoSign();
