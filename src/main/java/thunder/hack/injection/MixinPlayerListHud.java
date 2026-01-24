@@ -32,7 +32,6 @@ public class MixinPlayerListHud {
         if (ThunderHack.isFuturePresent())
             return;
 
-        if (ModuleManager.extraTab.isEnabled())
             cir.setReturnValue(mc.player.networkHandler.getListedPlayerListEntries().stream().sorted(ENTRY_ORDERING).limit(1000).toList());
         else
             cir.setReturnValue(mc.player.networkHandler.getListedPlayerListEntries().stream().sorted(ENTRY_ORDERING).limit(80).toList());
