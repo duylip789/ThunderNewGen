@@ -255,7 +255,7 @@ public class Speed extends Module {
             float currentSpeed = mode.getValue() == Mode.NCP && mc.player.input.movementForward <= 0 && prevForward > 0 ? Managers.PLAYER.currentPlayerSpeed * 0.66f : Managers.PLAYER.currentPlayerSpeed;
             //boolean canJump = !mc.player.horizontalCollision || ModuleManager.step.isDisabled();
 
-            if (stage == 1 && mc.player.isOnGround() && canJump) {
+         //   if (stage == 1 && mc.player.isOnGround() && canJump) {
                 mc.player.setVelocity(mc.player.getVelocity().x, MovementUtility.getJumpSpeed(), mc.player.getVelocity().z);
                 event.setY(MovementUtility.getJumpSpeed());
                 baseSpeed *= 2.149;
