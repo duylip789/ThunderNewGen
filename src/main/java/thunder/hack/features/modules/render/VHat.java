@@ -9,7 +9,7 @@ import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import thunder.hack.ThunderHack;
 import thunder.hack.core.Managers;
-import thunder.hack.events.impl.Render3DEvent; // Đã xóa chữ .render ở giữa
+import thunder.hack.events.impl.render.Render3DEvent; // Đã xóa chữ .render ở giữa
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.setting.Setting;
