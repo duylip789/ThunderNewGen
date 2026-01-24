@@ -40,7 +40,6 @@ public class ModuleManager implements IManager {
     public static DurabilityAlert durabilityAlert = new DurabilityAlert();
     public static CrosshairArrows crosshairArrows = new CrosshairArrows();
     public static ChatTranslator chatTranslator = new ChatTranslator();
-    public static PacketCanceler packetCanceler = new PacketCanceler();
     public static ClientSettings clientSettings = new ClientSettings();
     public static TimerIndicator timerIndicator = new TimerIndicator();
     public static ThunderHackGui thunderHackGui = new ThunderHackGui();
