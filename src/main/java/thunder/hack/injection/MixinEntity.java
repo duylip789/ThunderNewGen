@@ -108,13 +108,6 @@ public abstract class MixinEntity implements IEntity {
         }
     }
 
-    @Inject(method = "isInvisibleTo", at = @At("HEAD"), cancellable = true)
-    public void isInvisibleToHook(PlayerEntity player, CallbackInfoReturnable<Boolean> cir) {
-        if (ModuleManager.serverHelper.isEnabled() && ModuleManager.serverHelper.trueSight.getValue()) {
-            cir.setReturnValue(false);
-        }
-    }
-
     @Inject(method = "isInLava", at = @At("HEAD"), cancellable = true)
     public void isInLavaHook(CallbackInfoReturnable<Boolean> cir) {
         if((ModuleManager.jesus.isEnabled() || ModuleManager.noWaterCollision.isEnabled()) && mc.player != null && ((Entity) (Object) this).getId() == mc.player.getId())
@@ -125,12 +118,6 @@ public abstract class MixinEntity implements IEntity {
     public void isTouchingWaterHook(CallbackInfoReturnable<Boolean> cir) {
         if((ModuleManager.jesus.isEnabled() || ModuleManager.noWaterCollision.isEnabled()) && mc.player != null && ((Entity) (Object) this).getId() == mc.player.getId())
             cir.setReturnValue(false);
-    }
-
-    @Inject(method = "setSwimming", at = @At("HEAD"), cancellable = true)
-    public void setSwimmingHook(boolean swimming, CallbackInfo ci) {
-        if((ModuleManager.jesus.isEnabled() || ModuleManager.noWaterCollision.isEnabled()) && swimming && mc.player != null && ((Entity) (Object) this).getId() == mc.player.getId())
-            ci.cancel();
     }
 
     @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 0, argsOnly = true)
