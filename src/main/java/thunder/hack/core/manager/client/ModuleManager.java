@@ -111,7 +111,6 @@ public class ModuleManager implements IManager {
     public static ElytraPlus elytraPlus = new ElytraPlus();
     public static AutoSprint autoSprint = new AutoSprint();
     public static AutoGApple autoGApple = new AutoGApple();
-    public static AntiHunger antiHunger = new AntiHunger();
     public static Animations animations = new Animations();
     public static DamageTint damageTint = new DamageTint();
     public static AntiAttack antiAttack = new AntiAttack();
@@ -188,7 +187,6 @@ public class ModuleManager implements IManager {
     public static AntiWeb antiWeb = new AntiWeb();
     public static AntiBot antiBot = new AntiBot();
     public static AntiAim antiAim = new AntiAim();
-    public static AutoSex autoSex = new AutoSex();
     public static Tracers tracers = new Tracers();
     public static XCarry xCarry = new XCarry();
     public static Trails trails = new Trails();
