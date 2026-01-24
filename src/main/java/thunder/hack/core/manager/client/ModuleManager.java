@@ -131,7 +131,6 @@ public class ModuleManager implements IManager {
     public static ClickGui clickGui = new ClickGui();
     public static AutoTrap autoTrap = new AutoTrap();
     public static AutoTool autoTool = new AutoTool();
-    public static SoundESP soundESP = new SoundESP();
     public static AutoFish autoFish = new AutoFish();
     public static AutoBuff autoBuff = new AutoBuff();
     public static AutoAuth autoAuth = new AutoAuth();
