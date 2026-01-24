@@ -36,15 +36,12 @@ public class ModuleManager implements IManager {
     public static NoCommentExploit noCommentExploit = new NoCommentExploit();
     public static BaritoneSettings baritoneSettings = new BaritoneSettings();
     public static PortalInventory portalInventory = new PortalInventory();
-  //  public static AutoCrystal autoCrystal = new AutoCrystal();
-    public static AutoAnchor autoAnchor = new AutoAnchor();
- //   public static AutoCrystalBase autoCrystalBase = new AutoCrystalBase();  
+    public static AutoAnchor autoAnchor = new AutoAnchor(); 
     public static TotemPopCounter totemPopCounter = new TotemPopCounter();
     public static HotbarReplenish hotbarReplenish = new HotbarReplenish();
     public static DurabilityAlert durabilityAlert = new DurabilityAlert();
     public static CrosshairArrows crosshairArrows = new CrosshairArrows();
     public static PearlBlockThrow pearlBlockThrow = new PearlBlockThrow();
-//    public static AutoCrystalInfo autoCrystalInfo = new AutoCrystalInfo();
     public static ChatTranslator chatTranslator = new ChatTranslator();
     public static PacketCanceler packetCanceler = new PacketCanceler();
     public static ClientSettings clientSettings = new ClientSettings();
@@ -104,8 +101,6 @@ public class ModuleManager implements IManager {
     public static TPSCounter tpsCounter = new TPSCounter();
     public static StorageEsp storageEsp = new StorageEsp();
     public static StaffBoard staffBoard = new StaffBoard();
-    // public static PistonPush pistonPush = new PistonPush();
-  //  public static PistonAura pistonAura = new PistonAura();
     public static NoInteract noInteract = new NoInteract();
     public static ModuleList moduleList = new ModuleList();
     public static KillEffect killEffect = new KillEffect();
@@ -177,8 +172,6 @@ public class ModuleManager implements IManager {
     public static AutoEat autoEat = new AutoEat();
     public static AntiAFK antiAFK = new AntiAFK();
     public static SoundFX soundFX = new SoundFX();
-    public static KeyPearl keyPearl = new KeyPearl();
-   // public static TNTAura tntAura = new TNTAura();
     public static VoidESP voidESP = new VoidESP();
     public static Tracker tracker = new Tracker();
     public static TpsSync tpsSync = new TpsSync();
