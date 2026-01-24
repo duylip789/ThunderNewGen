@@ -212,7 +212,6 @@ public class Speed extends Module {
                 if (elytra == -1) {
                     disable(isRu() ? "Для этого режима нужна элитра!" : "You need elytra for this mode!");
                 } else {
-                    Strafe.disabler(elytra);
                     mc.player.setVelocity(mc.player.getVelocity().getX(), 0f, mc.player.getVelocity().getZ());
                     if (isMoving()) MovementUtility.setMotion(0.85);
                     elytraDelay.reset();
