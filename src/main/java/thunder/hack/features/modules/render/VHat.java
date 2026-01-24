@@ -31,10 +31,7 @@ public class VHat extends Module {
     public final Setting<Float> scale = new Setting<>("Scale", 0.6f, 0.1f, 1.2f);
     public final Setting<Float> height = new Setting<>("Height", 0.35f, 0.1f, 1.2f);
 
-    /**
-     * ThunderNewGen gọi hàm này trực tiếp trong renderer
-     * KHÔNG override – KHÔNG event – KHÔNG annotation
-     */
+    // ThunderNewGen render hook (KHÔNG event)
     public void onRender(MatrixStack matrices, float tickDelta) {
         if (mc.player == null || mc.world == null) return;
 
@@ -82,23 +79,21 @@ public class VHat extends Module {
         float h = height.getValue();
         int steps = 36;
 
-        // Cone body
+        // ==== Cone body ====
         BufferBuilder buf = tess.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         buf.vertex(matrix, 0f, h, 0f)
-                .color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha())
-                .next();
+                .color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
 
         for (int i = 0; i <= steps; i++) {
             double a = i * Math.PI * 2 / steps;
             float px = (float) (Math.cos(a) * r);
             float pz = (float) (Math.sin(a) * r);
             buf.vertex(matrix, px, 0f, pz)
-                    .color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha() / 2)
-                    .next();
+                    .color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha() / 2);
         }
         BufferRenderer.drawWithGlobalProgram(buf.end());
 
-        // Outline
+        // ==== Outline ====
         RenderSystem.lineWidth(1.6f);
         BufferBuilder line = tess.begin(VertexFormat.DrawMode.LINE_STRIP, VertexFormats.POSITION_COLOR);
         for (int i = 0; i <= steps; i++) {
@@ -106,8 +101,7 @@ public class VHat extends Module {
             float px = (float) (Math.cos(a) * r);
             float pz = (float) (Math.sin(a) * r);
             line.vertex(matrix, px, 0f, pz)
-                    .color(c.getRed(), c.getGreen(), c.getBlue(), 255)
-                    .next();
+                    .color(c.getRed(), c.getGreen(), c.getBlue(), 255);
         }
         BufferRenderer.drawWithGlobalProgram(line.end());
 
