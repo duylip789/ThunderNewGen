@@ -253,7 +253,7 @@ public class Speed extends Module {
         if (MovementUtility.isMoving()) {
             ThunderHack.TICK_TIMER = useTimer.getValue() ? 1.088f : 1f;
             float currentSpeed = mode.getValue() == Mode.NCP && mc.player.input.movementForward <= 0 && prevForward > 0 ? Managers.PLAYER.currentPlayerSpeed * 0.66f : Managers.PLAYER.currentPlayerSpeed;
-            boolean canJump = !mc.player.horizontalCollision || ModuleManager.step.isDisabled();
+            //boolean canJump = !mc.player.horizontalCollision || ModuleManager.step.isDisabled();
 
             if (stage == 1 && mc.player.isOnGround() && canJump) {
                 mc.player.setVelocity(mc.player.getVelocity().x, MovementUtility.getJumpSpeed(), mc.player.getVelocity().z);
