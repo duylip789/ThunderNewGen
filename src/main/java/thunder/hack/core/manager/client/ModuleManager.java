@@ -163,7 +163,6 @@ public class ModuleManager implements IManager {
     public static PopChams popChams = new PopChams();
     public static NoRender noRender = new NoRender();
     public static NameTags nameTags = new NameTags();
-    public static LongJump longJump = new LongJump();
     public static KeyBinds keyBinds = new KeyBinds();
     public static ExtraTab extraTab = new ExtraTab();
     public static ClickGui clickGui = new ClickGui();
