@@ -75,7 +75,6 @@ public class LagNotifier extends Module {
 
         if (Managers.SERVER.getTPS() < 10 && notifyTimer.passedMs(60000) && tpsNotify.getValue()) {
             String msg = isRu() ? "ТПС сервера ниже 10!" : "Server TPS is below 10!";
-            if (ModuleManager.tpsSync.isDisabled()) msg += isRu() ? " Рекомендуется включить TPSSync" : "It is recommended to enable TPSSync";
             Managers.NOTIFICATION.publicity("LagNotifier", msg, 8, Notification.Type.ERROR);
 
             isLagging = true;
