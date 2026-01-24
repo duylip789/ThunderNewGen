@@ -90,7 +90,6 @@ public class ModuleManager implements IManager {
     public static StaffBoard staffBoard = new StaffBoard();
     public static NoInteract noInteract = new NoInteract();
     public static ModuleList moduleList = new ModuleList();
-    public static KillEffect killEffect = new KillEffect();
     public static JumpCircle jumpCircle = new JumpCircle();
     public static Fullbright fullbright = new Fullbright();
     public static FpsCounter fpsCounter = new FpsCounter();
