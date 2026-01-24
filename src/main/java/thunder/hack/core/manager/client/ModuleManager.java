@@ -203,7 +203,6 @@ public class ModuleManager implements IManager {
     public static AntiAim antiAim = new AntiAim();
     public static AutoSex autoSex = new AutoSex();
     public static Tracers tracers = new Tracers();
-    public static Parkour parkour = new Parkour();
     public static XCarry xCarry = new XCarry();
     public static Trails trails = new Trails();
     public static MaceSwap maceSwap = new MaceSwap();
