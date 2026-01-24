@@ -8,6 +8,7 @@ import net.minecraft.util.Hand;
 import thunder.hack.events.impl.EventSync;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
+import thunder.hack.setting.Bind; // Đảm bảo import đúng class Bind
 import thunder.hack.utility.player.InventoryUtility;
 import thunder.hack.utility.player.SearchInvResult;
 
@@ -17,22 +18,22 @@ public class ClickAction extends Module {
     }
 
     public final Setting<Boolean> pearl = new Setting<>("Pearl", true);
-    // Thay đổi Bind thành KeyBind để khớp với core của bạn
-    public final Setting<thunder.hack.setting.KeyBind> pearlKey = new Setting<>("Pearl Key", new thunder.hack.setting.KeyBind(-1), v -> pearl.getValue());
+    // Khởi tạo Bind với phím -1 (None), không giữ, không bỏ qua
+    public final Setting<Bind> pearlKey = new Setting<>("Pearl Key", new Bind(-1, false, false), v -> pearl.getValue());
 
     public final Setting<Boolean> xp = new Setting<>("XP", true);
-    public final Setting<thunder.hack.setting.KeyBind> xpKey = new Setting<>("XP Key", new thunder.hack.setting.KeyBind(-1), v -> xp.getValue());
+    public final Setting<Bind> xpKey = new Setting<>("XP Key", new Bind(-1, false, false), v -> xp.getValue());
 
     @EventHandler
     public void onSync(EventSync e) {
         if (mc.player == null || mc.world == null) return;
 
-        // Xử lý XP: Giữ nút là ném liên tục
+        // Xử lý XP: Giữ nút là ném liên tục (20 lần/giây)
         if (xp.getValue() && xpKey.getValue().isKeyDown()) {
             performSilentAction(Items.EXPERIENCE_BOTTLE);
         }
 
-        // Xử lý Pearl: Nhấn nút là ném 1 quả (dùng chế độ "Just Pressed")
+        // Xử lý Pearl: Nhấn nút là ném 1 quả ngay lập tức
         if (pearl.getValue() && pearlKey.getValue().isKeyPressed()) {
             performSilentAction(Items.ENDER_PEARL);
         }
@@ -46,7 +47,7 @@ public class ClickAction extends Module {
             int itemSlot = result.slot();
 
             if (itemSlot != oldSlot) {
-                // Packet-based Silent Switch: Server thấy đổi nhưng tay vẫn cầm kiếm
+                // Silent Switch: Tráo item qua packet để không đổi tay cầm kiếm
                 sendPacket(new UpdateSelectedSlotC2SPacket(itemSlot));
                 sendPacket(new PlayerInteractItemC2SPacket(Hand.MAIN_HAND, 0));
                 sendPacket(new UpdateSelectedSlotC2SPacket(oldSlot));
