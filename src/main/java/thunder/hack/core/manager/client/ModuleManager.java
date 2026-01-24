@@ -119,7 +119,6 @@ public class ModuleManager implements IManager {
     public static AutoTrader autoTrader = new AutoTrader();
     public static CandleHud candleHud = new CandleHud();
     public static Particles particles = new Particles();
-    public static ToolSaver toolSaver = new ToolSaver();
     public static WayPoints wayPoints = new WayPoints();
     public static WaterMark waterMark = new WaterMark();
     public static ViewModel viewModel = new ViewModel();
@@ -171,7 +170,6 @@ public class ModuleManager implements IManager {
     public static SoundFX soundFX = new SoundFX();
     public static VoidESP voidESP = new VoidESP();
     public static Tracker tracker = new Tracker();
-    public static TpsSync tpsSync = new TpsSync();
     public static Spammer spammer = new Spammer();
     public static Shaders shaders = new Shaders();
     public static PingHud pingHud = new PingHud();
