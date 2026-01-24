@@ -8,9 +8,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import thunder.hack.core.Managers;
-import thunder.hack.events.impl.render.Render3dEvent; // THỬ CHỮ d VIẾT THƯỜNG
+import thunder.hack.events.impl.Render3DEvent; // BỎ CHỮ .render Ở GIỮA
 import thunder.hack.features.modules.Module;
-import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.ColorSetting;
 import meteordevelopment.orbit.EventHandler;
@@ -24,7 +23,7 @@ public class VHat extends Module {
     public final Setting<ColorSetting> color = new Setting<>("Color", new ColorSetting(new Color(255, 255, 255, 150).getRGB()));
 
     @EventHandler
-    public void onRender3D(Render3dEvent event) { // DÙNG Render3dEvent
+    public void onRender3D(Render3DEvent event) { // DÙNG Render3DEvent (Viết hoa)
         if (mc.world == null || mc.player == null) return;
         
         Color c = color.getValue().getColorObject();
@@ -32,7 +31,6 @@ public class VHat extends Module {
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player.isInvisible() || player.isSpectator()) continue;
             
-            // Vẽ nón
             double x = MathHelper.lerp(event.getTickDelta(), player.lastRenderX, player.getX()) - mc.gameRenderer.getCamera().getPos().getX();
             double y = MathHelper.lerp(event.getTickDelta(), player.lastRenderY, player.getY()) - mc.gameRenderer.getCamera().getPos().getY();
             double z = MathHelper.lerp(event.getTickDelta(), player.lastRenderZ, player.getZ()) - mc.gameRenderer.getCamera().getPos().getZ();
