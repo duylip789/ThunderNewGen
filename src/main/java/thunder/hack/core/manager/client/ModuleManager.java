@@ -234,7 +234,6 @@ public class ModuleManager implements IManager {
     public static Chams chams = new Chams();
     public static Blink blink = new Blink();
     public static NoBob noBob = new NoBob();
-    public static Jesus jesus = new Jesus();
     public static XRay xray = new XRay();
     public static Step step = new Step();
     public static Aura aura = new Aura();
