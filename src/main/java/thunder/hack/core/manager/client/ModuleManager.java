@@ -137,7 +137,6 @@ public class ModuleManager implements IManager {
     public static NoRender noRender = new NoRender();
     public static NameTags nameTags = new NameTags();
     public static KeyBinds keyBinds = new KeyBinds();
-    public static ExtraTab extraTab = new ExtraTab();
     public static ClickGui clickGui = new ClickGui();
     public static AutoTrap autoTrap = new AutoTrap();
     public static AutoTool autoTool = new AutoTool();
@@ -189,7 +188,6 @@ public class ModuleManager implements IManager {
     public static Radar radar = new Radar();
     public static Nuker nuker = new Nuker();
     public static Media media = new Media();
-    public static Ghost ghost = new Ghost();
     public static Chams chams = new Chams();
     public static Blink blink = new Blink();
     public static NoBob noBob = new NoBob();
