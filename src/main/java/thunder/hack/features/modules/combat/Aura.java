@@ -20,32 +20,37 @@ import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.BooleanSettingGroup;
 import thunder.hack.setting.impl.SettingGroup;
+import thunder.hack.utility.Timer;
 import thunder.hack.utility.player.InventoryUtility;
 
 import java.util.Comparator;
 
 public class Aura extends Module {
-    // --- MAIN ---
+    // --- MAIN SETTINGS ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
     public final Setting<Float> elytraAttackRange = new Setting<>("ElytraRange", 3.1f, 1f, 6.0f, v -> elytra.getValue());
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
     public final Setting<Switch> switchMode = new Setting<>("AutoWeapon", Switch.None);
-    public final Setting<Boolean> onlyWeapon = new Setting<>("OnlyWeapon", false, v -> switchMode.getValue() != Switch.Silent);
 
-    // --- ATTACK SETTINGS (Bao gồm ESP và Crit) ---
+    // --- ATTACK SETTINGS (ESP + Crit + Cooldown) ---
     public final Setting<SettingGroup> attackSettings = new Setting<>("Attack Settings", new SettingGroup(false, 0));
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack).addToGroup(attackSettings);
+    public final Setting<Integer> espLength = new Setting<>("ESPLength", 14, 1, 40, v -> esp.getValue() == ESP.ThunderHackV2).addToGroup(attackSettings);
+    public final Setting<Integer> espFactor = new Setting<>("ESPFactor", 8, 1, 20, v -> esp.getValue() == ESP.ThunderHackV2).addToGroup(attackSettings);
+    public final Setting<Float> espShaking = new Setting<>("ESPShaking", 1.8f, 1.5f, 10f, v -> esp.getValue() == ESP.ThunderHackV2).addToGroup(attackSettings);
+    public final Setting<Float> espAmplitude = new Setting<>("ESPAmplitude", 3f, 0.1f, 8f, v -> esp.getValue() == ESP.ThunderHackV2).addToGroup(attackSettings);
+
     public final Setting<BooleanSettingGroup> smartCrit = new Setting<>("SmartCrit", new BooleanSettingGroup(true)).addToGroup(attackSettings);
     public final Setting<Boolean> onlySpace = new Setting<>("OnlyCrit", false).addToGroup(smartCrit);
     public final Setting<Boolean> autoJump = new Setting<>("AutoJump", false).addToGroup(smartCrit);
-    public final Setting<Boolean> shieldBreaker = new Setting<>("ShieldBreaker", true).addToGroup(attackSettings);
+    
     public final Setting<Boolean> tpsSync = new Setting<>("TPSSync", false).addToGroup(attackSettings);
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(attackSettings);
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
 
-    // --- ROTATION SETTINGS ---
+    // --- ROTATION SETTINGS (Advance cũ) ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Integer> minYawStep = new Setting<>("MinYawStep", 65, 1, 180).addToGroup(rotationSettings);
@@ -57,7 +62,7 @@ public class Aura extends Module {
     public final Setting<SprintMode> sprint = new Setting<>("Sprint", SprintMode.HVH);
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
 
-    // --- TARGETS ---
+    // --- TARGETS (Full) ---
     public final Setting<SettingGroup> targetsGroup = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targetsGroup);
@@ -66,10 +71,11 @@ public class Aura extends Module {
     public final Setting<Boolean> Slimes = new Setting<>("Slimes", true).addToGroup(targetsGroup);
     public final Setting<Boolean> hostiles = new Setting<>("Hostiles", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", true).addToGroup(targetsGroup);
-    public final Setting<Boolean> ignoreInvisible = new Setting<>("IgnoreInvisible", false).addToGroup(targetsGroup);
+    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup);
 
     public static Entity target;
     private float lastYaw, lastPitch;
+    private final Timer fireworkTimer = new Timer();
 
     public Aura() {
         super("Aura", Category.COMBAT);
@@ -80,7 +86,7 @@ public class Aura extends Module {
         target = findTarget();
         if (target == null) return;
 
-        // Rotation Logic (GCD Fix + Smoothing)
+        // Rotation Smoothing
         float[] rots = getHVHRotations(target);
         float yawDiff = MathHelper.wrapDegrees(rots[0] - lastYaw);
         float yawStep = MathHelper.clamp(yawDiff, -maxYawStep.getValue(), maxYawStep.getValue());
@@ -94,6 +100,20 @@ public class Aura extends Module {
         if (clientLook.getValue()) {
             mc.player.setYaw(lastYaw);
             mc.player.setPitch(lastPitch);
+        }
+
+        // Logic Auto Firework
+        if (elytraTarget.getValue() && target instanceof PlayerEntity pl && pl.isFallFlying()) {
+            if (fireworkTimer.passedMs(500)) {
+                int fw = InventoryUtility.getItemSlot(Items.FIREWORK_ROCKET);
+                if (fw != -1) {
+                    int old = mc.player.getInventory().selectedSlot;
+                    InventoryUtility.switchTo(fw);
+                    mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+                    InventoryUtility.switchTo(old);
+                    fireworkTimer.reset();
+                }
+            }
         }
 
         // Attack Logic (HVH Sprint Reset)
@@ -114,7 +134,6 @@ public class Aura extends Module {
     private boolean canAttack() {
         if (!(target instanceof LivingEntity)) return false;
         if (smartCrit.getValue().isEnabled() && onlySpace.getValue() && mc.player.isOnGround()) return false;
-        
         float cd = attackCooldown.getValue();
         if (tpsSync.getValue()) cd *= (20.0f / Managers.TICK.getTPS());
         return mc.player.getAttackCooldownProgress(0.5f) >= cd;
@@ -123,41 +142,39 @@ public class Aura extends Module {
     private Entity findTarget() {
         float r = elytra.getValue() && mc.player.isFallFlying() ? elytraAttackRange.getValue() : attackRange.getValue();
         return mc.world.getEntities().stream()
-                .filter(e -> e != mc.player && e.isAlive() && mc.player.distanceTo(e) <= r)
+                .filter(e -> e != mc.player && e.isAlive() && mc.player.distanceTo(e) <= r + aimRange.getValue())
                 .filter(this::isProperTarget)
                 .min(Comparator.comparingDouble(e -> mc.player.distanceTo(e)))
                 .orElse(null);
     }
 
     private boolean isProperTarget(Entity e) {
-        if (e instanceof PlayerEntity && !Players.getValue()) return false;
-        if (e instanceof SlimeEntity && !Slimes.getValue()) return false;
-        if (e instanceof VillagerEntity && !Villagers.getValue()) return false;
-        if (e instanceof AnimalEntity && !Animals.getValue()) return false;
-        if (e instanceof HostileEntity && !hostiles.getValue()) return false;
-        if ((e instanceof FireballEntity || e instanceof ShulkerBulletEntity) && !Projectiles.getValue()) return false;
-        if (e.isInvisible() && ignoreInvisible.getValue()) return false;
-        return true;
+        if (e instanceof PlayerEntity) return Players.getValue();
+        if (e instanceof SlimeEntity) return Slimes.getValue();
+        if (e instanceof HostileEntity) return hostiles.getValue();
+        if (e instanceof VillagerEntity) return Villagers.getValue();
+        if (e instanceof AnimalEntity) return Animals.getValue();
+        if (e instanceof FireballEntity || e instanceof ShulkerBulletEntity) return Projectiles.getValue();
+        return false;
     }
 
     private float[] getHVHRotations(Entity entity) {
+        Vec3d eyes = mc.player.getEyePos();
         Vec3d targetPos = entity.getBoundingBox().getCenter();
-        double diffX = targetPos.x - mc.player.getX();
-        double diffY = targetPos.y - mc.player.getEyePos().y;
-        double diffZ = targetPos.z - mc.player.getZ();
+        double diffX = targetPos.x - eyes.x;
+        double diffY = targetPos.y - eyes.y;
+        double diffZ = targetPos.z - eyes.z;
         double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
-        float yaw = (float) Math.toDegrees(Math.atan2(diffZ, diffX)) - 90F;
-        float pitch = (float) -Math.toDegrees(Math.atan2(diffY, diffXZ));
-        
-        // GCD Fix
-        double sens = mc.options.getMouseSensitivity().getValue() * 0.6 + 0.2;
-        double gcd = Math.pow(sens, 3.0) * 1.2;
-        return new float[]{(float) (yaw - (yaw % gcd)), (float) (pitch - (pitch % gcd))};
+        return new float[]{(float) Math.toDegrees(Math.atan2(diffZ, diffX)) - 90F, (float) -Math.toDegrees(Math.atan2(diffY, diffXZ))};
     }
 
+    // --- ENUMS (Đảm bảo đầy đủ đóng ngoặc) ---
     public enum SprintMode { Off, Normal, HVH }
     public enum Mode { Track, Interact, Grim, None }
     public enum Switch { Normal, None, Silent }
     public enum Sort { LowestDistance, HighestDistance, LowestHealth, FOV }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
-  
+    public enum AttackHand { MainHand, OffHand, None }
+    public enum ESP { Off, ThunderHack, ThunderHackV2 }
+} // DẤU NGOẶC ĐÓNG CUỐI CÙNG CỦA CLASS
+                    
