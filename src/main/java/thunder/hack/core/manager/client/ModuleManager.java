@@ -80,7 +80,6 @@ public class ModuleManager implements IManager {
     public static MiddleClick middleClick = new MiddleClick();
     public static LogoutSpots logoutSpots = new LogoutSpots();
     public static LagNotifier lagNotifier = new LagNotifier();
-    public static BreadCrumbs breadCrumbs = new BreadCrumbs();
     public static AutoRespawn autoRespawn = new AutoRespawn();
     public static AspectRatio aspectRatio = new AspectRatio();
     public static ClientSpoof clientSpoof = new ClientSpoof();
