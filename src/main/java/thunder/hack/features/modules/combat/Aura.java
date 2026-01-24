@@ -786,6 +786,7 @@ public class Aura extends Module {
 
     public LivingEntity getTarget() {
     return target instanceof LivingEntity ? (LivingEntity) target : null;
+    }
 
     private boolean skipEntity(Entity entity) {
         if (isBullet(entity)) return false;
