@@ -51,7 +51,6 @@ public class ModuleManager implements IManager {
     public static BreakHighLight breakHighLight = new BreakHighLight();
     public static BlockHighLight blockHighLight = new BlockHighLight();
     public static TotemAnimation totemAnimation = new TotemAnimation();
-    public static PortalGodMode portalGodMode = new PortalGodMode();
     public static OptifineCapes optifineCapes = new OptifineCapes();
     public static Notifications notifications = new Notifications();
     public static NoEntityTrace noEntityTrace = new NoEntityTrace();
@@ -196,7 +195,6 @@ public class ModuleManager implements IManager {
     public static NoPush noPush = new NoPush();
     public static UnHook unHook = new UnHook();
     public static Timer timer = new Timer();
-    public static Regen regen = new Regen();
     public static Speed speed = new Speed();
     public static Reach reach = new Reach();
     public static Radar radar = new Radar();
