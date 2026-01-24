@@ -33,7 +33,6 @@ public class MixinPlayerListHud {
             return;
 
             cir.setReturnValue(mc.player.networkHandler.getListedPlayerListEntries().stream().sorted(ENTRY_ORDERING).limit(1000).toList());
-        else
             cir.setReturnValue(mc.player.networkHandler.getListedPlayerListEntries().stream().sorted(ENTRY_ORDERING).limit(80).toList());
     }
 }
