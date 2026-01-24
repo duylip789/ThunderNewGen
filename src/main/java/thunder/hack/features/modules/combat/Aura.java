@@ -147,7 +147,6 @@ public class Aura extends Module {
     public final Setting<Boolean> ignoreShield = new Setting<>("AttackShieldingEntities", true).addToGroup(targets);
 
     public static Entity target;
-    public static LivingEntity target;
     public float rotationYaw;
     public float rotationPitch;
     public float pitchAcceleration = 1f;
@@ -786,8 +785,7 @@ public class Aura extends Module {
     }
 
     public LivingEntity getTarget() {
-    return target;
-    }
+    return target instanceof LivingEntity ? (LivingEntity) target : null;
 
     private boolean skipEntity(Entity entity) {
         if (isBullet(entity)) return false;
