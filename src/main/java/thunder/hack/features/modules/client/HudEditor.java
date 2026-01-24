@@ -34,20 +34,24 @@ public final class HudEditor extends Module {
     }
 
     public static Color getColor(int count) {
+        int speed = colorSpeed.getValue();
+        Color c1 = hcolor1.getValue().getColorObject();
+        Color c2 = acolor.getValue().getColorObject();
+
         return switch (colorMode.getValue()) {
-           // case Sky -> Render2DEngine.skyRainbow(colorSpeed.getValue(), count);
-           // case LightRainbow -> Render2DEngine.rainbow(colorSpeed.getValue(), count, .6f, 1, 1);
-         //   case Rainbow -> Render2DEngine.rainbow(colorSpeed.getValue(), count, 1f, 1, 1);
-           // case Fade -> Render2DEngine.fade(colorSpeed.getValue(), count, hcolor1.getValue().getColorObject(), 1);
-            case DoubleColor ->
-             case Eucalyptus -> {
-    // Màu xanh Cyan sáng phối với màu xanh biển sâu
-    Color c1 = new Color(0, 251, 255); // #00FBFF
-    Color c2 = new Color(0, 68, 255);  // #0044FF
-    return Render2DEngine.TwoColoreffect(c1, c2, colorSpeed.getValue(), count);
-             }  Render2DEngine.TwoColoreffect(hcolor1.getValue().getColorObject(), acolor.getValue().getColorObject(), colorSpeed.getValue(), count);
-            case Analogous -> Render2DEngine.interpolateColorsBackAndForth(colorSpeed.getValue(), count, hcolor1.getValue().getColorObject(), Render2DEngine.getAnalogousColor(acolor.getValue().getColorObject()), true);
-            default -> hcolor1.getValue().getColorObject();
+            case Sky -> Render2DEngine.skyRainbow(speed, count);
+            case LightRainbow -> Render2DEngine.rainbow(speed, count, 0.6f, 1f, 1f);
+            case Rainbow -> Render2DEngine.rainbow(speed, count, 1f, 1f, 1f);
+            case Fade -> Render2DEngine.fade(speed, count, c1, 1);
+            case DoubleColor -> Render2DEngine.TwoColoreffect(c1, c2, speed, count);
+            case Eucalyptus -> {
+                // Màu xanh Neon cực đẹp như trong ảnh bạn gửi
+                Color neon1 = new Color(0, 251, 255); 
+                Color neon2 = new Color(0, 68, 255);  
+                yield Render2DEngine.TwoColoreffect(neon1, neon2, speed, count);
+            }
+            case Analogous -> Render2DEngine.interpolateColorsBackAndForth(speed, count, c1, Render2DEngine.getAnalogousColor(c2), true);
+            default -> c1;
         };
     }
 
