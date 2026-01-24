@@ -785,6 +785,10 @@ public class Aura extends Module {
         };
     }
 
+    public LivingEntity getTarget() {
+    return target;
+    }
+
     private boolean skipEntity(Entity entity) {
         if (isBullet(entity)) return false;
         if (!(entity instanceof LivingEntity ent)) return true;
