@@ -8,12 +8,12 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import thunder.hack.ThunderHack;
-import thunder.hack.core.Managers; // Thêm cái này để dùng FriendManager
-import thunder.hack.events.impl.render.Render3DEvent; // Đổi EventRender3D thành Render3DEvent
+import thunder.hack.core.Managers;
+import thunder.hack.events.impl.Render3DEvent; // Đã xóa chữ .render ở giữa
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.setting.Setting;
-import thunder.hack.setting.impl.ColorSetting; // Sửa đường dẫn ColorSetting
+import thunder.hack.setting.impl.ColorSetting;
 import meteordevelopment.orbit.EventHandler;
 
 import java.awt.Color;
@@ -31,17 +31,18 @@ public class VHat extends Module {
     public final Setting<Float> height = new Setting<>("Height", 0.3f, 0.1f, 1.0f);
 
     @EventHandler
-    public void onRender3D(Render3DEvent event) { // Đổi tên Class Event ở đây
+    public void onRender3D(Render3DEvent event) {
         if (mc.world == null || mc.player == null) return;
 
+        // Lấy màu sắc
         Color finalColor = syncColor.getValue() ? HudEditor.getColor(1) : color.getValue().getColorObject();
 
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player.isInvisible() || player.isSpectator()) continue;
 
+            // Kiểm tra Friend
             if (friendsOnly.getValue()) {
                 boolean isMe = (player == mc.player);
-                // Sửa ThunderHack.friendManager thành Managers.FRIEND
                 boolean isFriend = Managers.FRIEND.isFriend(player.getName().getString());
                 if (!isMe && !isFriend) continue;
             }
@@ -51,6 +52,7 @@ public class VHat extends Module {
     }
 
     private void drawHat(MatrixStack matrices, PlayerEntity player, float tickDelta, Color c) {
+        // Nội suy vị trí để không bị giật
         double x = MathHelper.lerp(tickDelta, player.lastRenderX, player.getX()) - mc.gameRenderer.getCamera().getPos().getX();
         double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY()) - mc.gameRenderer.getCamera().getPos().getY();
         double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ()) - mc.gameRenderer.getCamera().getPos().getZ();
@@ -70,8 +72,9 @@ public class VHat extends Module {
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         
+        // Vẽ thân nón
+        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         float radius = scale.getValue();
         float coneHeight = height.getValue();
@@ -84,19 +87,17 @@ public class VHat extends Module {
             float pz = (float) (Math.sin(angle) * radius);
             buffer.vertex(matrix, px, 0, pz).color(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha() / 2);
         }
-        
         BufferRenderer.drawWithGlobalProgram(buffer.end());
 
+        // Vẽ viền nón
         RenderSystem.lineWidth(1.5f);
         BufferBuilder lineBuffer = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINE_STRIP, VertexFormats.POSITION_COLOR);
-
         for (int i = 0; i <= 32; i++) {
             double angle = i * 2 * Math.PI / 32;
             float px = (float) (Math.cos(angle) * radius);
             float pz = (float) (Math.sin(angle) * radius);
             lineBuffer.vertex(matrix, px, 0, pz).color(c.getRed(), c.getGreen(), c.getBlue(), 255);
         }
-        
         BufferRenderer.drawWithGlobalProgram(lineBuffer.end());
 
         RenderSystem.enableCull();
