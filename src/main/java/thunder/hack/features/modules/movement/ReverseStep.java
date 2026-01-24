@@ -26,7 +26,6 @@ public class ReverseStep extends Module {
 
     @EventHandler
     public void onEntitySync(EventSync eventPlayerUpdateWalking) {
-        if (ModuleManager.packetFly.isEnabled()) return;
 
         BlockPos playerPos = BlockPos.ofFloored(mc.player.getPos());
 
