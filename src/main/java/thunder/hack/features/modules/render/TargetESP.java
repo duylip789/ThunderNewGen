@@ -1,19 +1,18 @@
 package thunder.hack.features.modules.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import org.joml.Matrix4f;
+import thunder.hack.core.manager.client.ModuleManager;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.EnumSetting;
-import thunder.hack.features.modules.client.HudEditor;
+import thunder.hack.utility.render.Render3DEngine;
 
 import java.awt.*;
+import java.util.Random;
 
 public class TargetESP extends Module {
 
@@ -30,77 +29,81 @@ public class TargetESP extends Module {
 
     @Override
     public void onRender(MatrixStack matrices, float tickDelta) {
-        if (mc.world == null || mc.player == null) return;
+        if (!ModuleManager.aura.isEnabled()) return;
 
-        Aura aura = Module.getModule(Aura.class);
-        if (aura == null) return;
-
-        LivingEntity target = aura.getTarget();
-        if (target == null) return;
+        LivingEntity target = Aura.target;
+        if (target == null || target.isRemoved()) return;
 
         if (mode.getValue() == Mode.NewGen) {
-            renderNewGen(matrices, target, tickDelta);
+            renderGhost(target, tickDelta);
         }
     }
 
-    // ================== NEWGEN ESP ==================
+    /* ================= GHOST ESP ================= */
 
-    private void renderNewGen(MatrixStack matrices, LivingEntity target, float tickDelta) {
-        Vec3d cam = mc.gameRenderer.getCamera().getPos();
+    private void renderGhost(LivingEntity target, float tickDelta) {
+        Vec3d basePos = Render3DEngine.getEntityRenderPos(target, tickDelta);
 
-        double x = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX()) - cam.x;
-        double y = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY()) + target.getHeight() * 0.6 - cam.y;
-        double z = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ()) - cam.z;
+        float time = (System.currentTimeMillis() % 10_000L) / 1000f;
 
-        Color c = HudEditor.getColor(1);
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        matrices.push();
-        matrices.translate(x, y, z);
-
-        Matrix4f matrix = matrices.peek().getPositionMatrix();
-        Tessellator tess = Tessellator.getInstance();
-        BufferBuilder buffer = tess.begin(VertexFormat.DrawMode.DEBUG_LINE_STRIP, VertexFormats.POSITION_COLOR);
-
-        long time = System.currentTimeMillis();
+        Color color = ModuleManager.hud.getColor(1);
 
         for (int i = 0; i < 3; i++) {
-            double seed = i * 1000;
-            double t = (time + seed) * 0.002;
+            float angle = time * 2f + i * 2.1f;
+            float radius = 0.6f + randomOffset(i) * 0.3f;
 
-            for (int p = 0; p < 18; p++) {
-                double prog = p / 18.0;
+            double x = basePos.x + Math.cos(angle) * radius;
+            double z = basePos.z + Math.sin(angle) * radius;
+            double y = basePos.y + 0.8f
+                    + Math.sin(time * 3 + i) * 0.4f;
 
-                double ox = Math.sin(t + prog * 6) * 0.6;
-                double oy = Math.cos(t * 1.3 + prog * 5) * 0.4;
-                double oz = Math.sin(t * 1.7 + prog * 4) * 0.6;
-
-                float alpha = (float) (1.0 - prog) * 180f;
-
-                buffer.vertex(matrix,
-                        (float) ox,
-                        (float) oy,
-                        (float) oz
-                ).color(
-                        c.getRed(),
-                        c.getGreen(),
-                        c.getBlue(),
-                        (int) alpha
-                );
-            }
+            drawWormTrail(
+                    basePos.x, basePos.y + 0.9, basePos.z,
+                    x, y, z,
+                    color
+            );
         }
+    }
 
-        BufferRenderer.drawWithGlobalProgram(buffer.end());
+    /* ============== GIUN / WORM TRAIL ============== */
 
-        matrices.pop();
+    private void drawWormTrail(
+            double sx, double sy, double sz,
+            double ex, double ey, double ez,
+            Color color
+    ) {
+        int segments = 12;
 
-        RenderSystem.enableCull();
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
+        for (int i = 0; i < segments; i++) {
+            float t1 = i / (float) segments;
+            float t2 = (i + 1) / (float) segments;
+
+            double x1 = MathHelper.lerp(t1, sx, ex);
+            double y1 = MathHelper.lerp(t1, sy, ey);
+            double z1 = MathHelper.lerp(t1, sz, ez);
+
+            double x2 = MathHelper.lerp(t2, sx, ex);
+            double y2 = MathHelper.lerp(t2, sy, ey);
+            double z2 = MathHelper.lerp(t2, sz, ez);
+
+            float alpha = 0.6f * (1f - t1);
+
+            Render3DEngine.drawLine(
+                    x1, y1, z1,
+                    x2, y2, z2,
+                    new Color(
+                            color.getRed(),
+                            color.getGreen(),
+                            color.getBlue(),
+                            (int) (alpha * 255)
+                    ),
+                    1.5f
+            );
+        }
+    }
+
+    private float randomOffset(int seed) {
+        Random r = new Random(seed * 9999L);
+        return r.nextFloat() - 0.5f;
     }
 }
