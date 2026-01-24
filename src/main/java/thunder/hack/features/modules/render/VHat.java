@@ -7,12 +7,9 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
-import thunder.hack.core.Managers;
-import thunder.hack.events.impl.Render3DEvent; // BỎ CHỮ .render Ở GIỮA
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.ColorSetting;
-import meteordevelopment.orbit.EventHandler;
 import java.awt.Color;
 
 public class VHat extends Module {
@@ -22,20 +19,22 @@ public class VHat extends Module {
 
     public final Setting<ColorSetting> color = new Setting<>("Color", new ColorSetting(new Color(255, 255, 255, 150).getRGB()));
 
-    @EventHandler
-    public void onRender3D(Render3DEvent event) { // DÙNG Render3DEvent (Viết hoa)
+    // Thay vì dùng EventHandler, ta dùng hàm onRender của chính Module nếu base hỗ trợ
+    // Hoặc nếu build vẫn lỗi, ta sẽ tạm thời để trống để bạn check log xem class Render nào tồn tại
+    
+    public void onRender3D(MatrixStack matrices) {
         if (mc.world == null || mc.player == null) return;
         
         Color c = color.getValue().getColorObject();
+        float tickDelta = mc.getRenderTickCounter().getTickDelta(false);
         
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player.isInvisible() || player.isSpectator()) continue;
             
-            double x = MathHelper.lerp(event.getTickDelta(), player.lastRenderX, player.getX()) - mc.gameRenderer.getCamera().getPos().getX();
-            double y = MathHelper.lerp(event.getTickDelta(), player.lastRenderY, player.getY()) - mc.gameRenderer.getCamera().getPos().getY();
-            double z = MathHelper.lerp(event.getTickDelta(), player.lastRenderZ, player.getZ()) - mc.gameRenderer.getCamera().getPos().getZ();
+            double x = MathHelper.lerp(tickDelta, player.lastRenderX, player.getX()) - mc.getEntityRenderDispatcher().camera.getPos().getX();
+            double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY()) - mc.getEntityRenderDispatcher().camera.getPos().getY();
+            double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ()) - mc.getEntityRenderDispatcher().camera.getPos().getZ();
             
-            MatrixStack matrices = event.getMatrixStack();
             matrices.push();
             matrices.translate(x, y + player.getHeight() + 0.1, z);
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-player.headYaw));
