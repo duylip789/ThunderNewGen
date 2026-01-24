@@ -131,7 +131,6 @@ public class ModuleManager implements IManager {
     public static WaterMark waterMark = new WaterMark();
     public static ViewModel viewModel = new ViewModel();
     public static TunnelEsp tunnelEsp = new TunnelEsp();
-    public static TickShift tickShift = new TickShift();
     public static TargetHud targetHud = new TargetHud();
     public static PotionHud potionHud = new PotionHud();
     public static PearlBait pearlBait = new PearlBait();
