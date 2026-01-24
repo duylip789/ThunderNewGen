@@ -109,7 +109,6 @@ public class KitCommand extends Command {
             if (json.get(name) != null && !name.equals("selected")) {
                 json.addProperty("selected", name);
                 saveFile(json, name, isRu() ? "выбран" : "selected");
-                ModuleManager.autoGear.setup();
             } else sendMessage(isRu() ? "Кит не найден" : "Kit not found");
         } catch (Exception e) {
             sendMessage(isRu() ? "Кит не найден" : "Kit not found");
