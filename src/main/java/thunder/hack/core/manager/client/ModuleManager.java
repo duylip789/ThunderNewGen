@@ -144,7 +144,6 @@ public class ModuleManager implements IManager {
     public static Companion companion = new Companion();
     public static AntiCrash antiCrash = new AntiCrash();
     public static AutoGear autoGear = new AutoGear();
-    public static ViewLock viewLock = new ViewLock();
     public static Velocity velocity = new Velocity();
     public static Tooltips tooltips = new Tooltips();
     public static Surround surround = new Surround();
@@ -188,7 +187,6 @@ public class ModuleManager implements IManager {
     public static AntiBot antiBot = new AntiBot();
     public static AntiAim antiAim = new AntiAim();
     public static Tracers tracers = new Tracers();
-    public static XCarry xCarry = new XCarry();
     public static Trails trails = new Trails();
     public static MaceSwap maceSwap = new MaceSwap();
     public static NoSlow noSlow = new NoSlow();
