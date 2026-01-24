@@ -204,7 +204,6 @@ public class ModuleManager implements IManager {
     public static Trails trails = new Trails();
     public static MaceSwap maceSwap = new MaceSwap();
     public static Strafe strafe = new Strafe();
-    public static Spider spider = new Spider();
     public static NoSlow noSlow = new NoSlow();
     public static NoFall noFall = new NoFall();
     public static Hotbar hotbar = new Hotbar();
