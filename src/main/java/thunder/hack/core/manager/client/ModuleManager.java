@@ -74,6 +74,7 @@ public class ModuleManager implements IManager {
     public static PVPResources pvpResources = new PVPResources();
     public static NoServerSlot noServerSlot = new NoServerSlot();
     public static NoCameraClip noCameraClip = new NoCameraClip();
+    public static ClickAction clickAction = new ClickAction();
     public static ItemScroller itemScroller = new ItemScroller();
     public static HitParticles hitParticles = new HitParticles();
     public static EbatteSratte ebatteSratte = new EbatteSratte();
