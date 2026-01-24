@@ -108,18 +108,6 @@ public abstract class MixinEntity implements IEntity {
         }
     }
 
-    @Inject(method = "isInLava", at = @At("HEAD"), cancellable = true)
-    public void isInLavaHook(CallbackInfoReturnable<Boolean> cir) {
-        if((ModuleManager.jesus.isEnabled() || ModuleManager.noWaterCollision.isEnabled()) && mc.player != null && ((Entity) (Object) this).getId() == mc.player.getId())
-            cir.setReturnValue(false);
-    }
-
-    @Inject(method = "isTouchingWater", at = @At("HEAD"), cancellable = true)
-    public void isTouchingWaterHook(CallbackInfoReturnable<Boolean> cir) {
-        if((ModuleManager.jesus.isEnabled() || ModuleManager.noWaterCollision.isEnabled()) && mc.player != null && ((Entity) (Object) this).getId() == mc.player.getId())
-            cir.setReturnValue(false);
-    }
-
     @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 0, argsOnly = true)
     private double changeLookDirectionHook0(double value) {
         if(ModuleManager.viewLock.isEnabled() && ModuleManager.viewLock.yaw.getValue())
