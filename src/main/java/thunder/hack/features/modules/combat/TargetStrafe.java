@@ -36,7 +36,7 @@ public class TargetStrafe extends Module {
 
     public boolean canStrafe() {
         if (mc.player.isSneaking() || mc.player.isInLava() || mc.player.isSubmergedInWater()) return false;
-        if (ModuleManager.scaffold.isEnabled() || ModuleManager.speed.isEnabled()) return false;
+        if (ModuleManager.speed.isEnabled()) return false;
         return Aura.target != null && ModuleManager.aura.isEnabled();
     }
 
