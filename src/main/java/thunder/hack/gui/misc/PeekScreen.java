@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class PeekScreen extends ShulkerBoxScreen {
+
     private static final ItemStack[] ITEMS = new ItemStack[27];
 
     public PeekScreen(ShulkerBoxScreenHandler handler, PlayerInventory inventory, Text title, Block block) {
@@ -24,21 +25,35 @@ public class PeekScreen extends ShulkerBoxScreen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE && focusedSlot != null && !focusedSlot.getStack().isEmpty() && client.player.playerScreenHandler.getCursorStack().isEmpty()) {
-            ItemStack itemStack = focusedSlot.getStack();
+        if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE
+                && focusedSlot != null
+                && !focusedSlot.getStack().isEmpty()
+                && client.player.playerScreenHandler.getCursorStack().isEmpty()) {
 
-            if (Tooltips.hasItems(itemStack) && Tooltips.middleClickOpen.getValue()) {
+            ItemStack stack = focusedSlot.getStack();
+
+            if (stack.contains(DataComponentTypes.CONTAINER)) {
 
                 Arrays.fill(ITEMS, ItemStack.EMPTY);
-                ContainerComponent nbt = itemStack.get(DataComponentTypes.CONTAINER);
-                if (nbt != null) {
-                    List<ItemStack> list = nbt.stream().toList();
-                    for (int i = 0; i < list.size(); i++)
+                ContainerComponent container = stack.get(DataComponentTypes.CONTAINER);
+
+                if (container != null) {
+                    List<ItemStack> list = container.stream().toList();
+                    for (int i = 0; i < Math.min(list.size(), 27); i++) {
                         ITEMS[i] = list.get(i);
+                    }
                 }
 
-
-                client.setScreen(new PeekScreen(new ShulkerBoxScreenHandler(0, client.player.getInventory(), new SimpleInventory(ITEMS)), client.player.getInventory(), focusedSlot.getStack().getName(), ((BlockItem) focusedSlot.getStack().getItem()).getBlock()));
+                client.setScreen(new PeekScreen(
+                        new ShulkerBoxScreenHandler(
+                                0,
+                                client.player.getInventory(),
+                                new SimpleInventory(ITEMS)
+                        ),
+                        client.player.getInventory(),
+                        stack.getName(),
+                        ((BlockItem) stack.getItem()).getBlock()
+                ));
                 return true;
             }
         }
