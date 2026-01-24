@@ -4,7 +4,7 @@ import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.SwordItem;
-import thunder.hack.events.impl.AttackEvent; 
+import thunder.hack.events.impl.player.InteractEntityEvent; // Đường dẫn chuẩn 1.21
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
 import meteordevelopment.orbit.EventHandler;
@@ -18,7 +18,7 @@ public class MaceSwap extends Module {
     private boolean swapping = false;
 
     @EventHandler
-    public void onAttack(AttackEvent event) {
+    public void onInteract(InteractEntityEvent event) {
         if (mc.player == null || mc.player.fallDistance < minFall.getValue()) return;
         
         ItemStack heldItem = mc.player.getMainHandStack();
