@@ -100,7 +100,6 @@ public class ModuleManager implements IManager {
     public static AutoSprint autoSprint = new AutoSprint();
     public static AutoGApple autoGApple = new AutoGApple();
     public static Animations animations = new Animations();
-    public static DamageTint damageTint = new DamageTint();
     public static AntiAttack antiAttack = new AntiAttack();
     public static GapplesHud gapplesHud = new GapplesHud();
     public static HitBubbles hitBubbles = new HitBubbles();
@@ -184,7 +183,6 @@ public class ModuleManager implements IManager {
     public static Radar radar = new Radar();
     public static Nuker nuker = new Nuker();
     public static Media media = new Media();
-    public static Chams chams = new Chams();
     public static Blink blink = new Blink();
     public static NoBob noBob = new NoBob();
     public static XRay xray = new XRay();
