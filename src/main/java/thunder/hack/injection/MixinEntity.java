@@ -116,7 +116,6 @@ public abstract class MixinEntity implements IEntity {
 
     @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 1, argsOnly = true)
     private double changeLookDirectionHook1(double value) {
-        if(ModuleManager.viewLock.isEnabled() && ModuleManager.viewLock.pitch.getValue())
             return 0d;
         return value;
     }
