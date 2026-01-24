@@ -131,9 +131,6 @@ public class Strafe extends Module {
         if (mc.player.isInLava()) {
             return false;
         }
-        if (ModuleManager.scaffold.isEnabled()) {
-            return false;
-        }
         if (ModuleManager.speed.isEnabled()) {
             return false;
         }
