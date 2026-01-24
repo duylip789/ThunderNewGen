@@ -1,87 +1,110 @@
 package thunder.hack.features.modules.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
-import thunder.hack.events.impl.RenderWorldLastEvent;
+import thunder.hack.events.impl.Render3DEvent;
 import thunder.hack.features.modules.Module;
-import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.features.modules.combat.Aura;
+import thunder.hack.features.modules.client.HudEditor;
+import thunder.hack.setting.Setting;
 
 import java.awt.*;
+import java.util.Random;
 
 public class TargetESP extends Module {
+
+    public enum Mode {
+        Circle,
+        Cube,
+        GhostV1,
+        GhostV2
+    }
+
+    private final Setting<Mode> mode =
+            new Setting<>("Mode", Mode.GhostV1);
+
+    private final Random random = new Random();
 
     public TargetESP() {
         super("TargetESP", Category.RENDER);
     }
 
-    private final MinecraftClient mc = MinecraftClient.getInstance();
-
     @EventHandler
-    public void onRender(RenderWorldLastEvent event) {
-        if (mc.world == null || mc.player == null) return;
-
-        if (!Aura.INSTANCE.isEnabled()) return;
-        LivingEntity target = Aura.INSTANCE.getTarget();
+    public void onRender3D(Render3DEvent e) {
+        if (!Aura.isEnabled()) return;
+        Entity target = Aura.target;
         if (target == null) return;
 
-        renderGhostESP(event.getMatrixStack(), target, event.getTickDelta());
+        switch (mode.getValue()) {
+            case GhostV1 -> renderGhost(e, target, 0.25, 14);
+            case GhostV2 -> renderGhost(e, target, 0.45, 22);
+            case Circle -> renderCircle(e, target);
+            case Cube -> renderCube(e, target);
+        }
     }
 
-    // ================= GHOST ESP =================
-    private void renderGhostESP(MatrixStack matrices, LivingEntity target, float tickDelta) {
-        Camera cam = mc.gameRenderer.getCamera();
+    /* ================= GHOST (GIUN) ================= */
 
-        double x = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX()) - cam.getPos().x;
-        double y = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY()) - cam.getPos().y + target.getHeight() * 0.6;
-        double z = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ()) - cam.getPos().z;
+    private void renderGhost(Render3DEvent e, Entity target,
+                             double power, int length) {
 
-        matrices.push();
-        matrices.translate(x, y, z);
+        MatrixStack matrices = e.getMatrixStack();
+        Vec3d cam = mc.gameRenderer.getCamera().getPos();
+
+        double x = MathHelper.lerp(e.getTickDelta(), target.lastRenderX, target.getX()) - cam.x;
+        double y = MathHelper.lerp(e.getTickDelta(), target.lastRenderY, target.getY()) - cam.y + target.getHeight() * 0.6;
+        double z = MathHelper.lerp(e.getTickDelta(), target.lastRenderZ, target.getZ()) - cam.z;
+
+        Color color = HudEditor.getColor(1);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableDepthTest();
-        RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
-        Color base = HudEditor.getColor(1);
-        float time = (mc.world.getTime() + tickDelta) * 0.15f;
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-        Tessellator tess = Tessellator.getInstance();
-        BufferBuilder buffer = tess.begin(VertexFormat.DrawMode.LINE_STRIP, VertexFormats.POSITION_COLOR);
-        Matrix4f mat = matrices.peek().getPositionMatrix();
+        for (int g = 0; g < 3; g++) {
+            buffer.begin(VertexFormat.DrawMode.LINE_STRIP, VertexFormats.POSITION_COLOR);
 
-        // 3 con "giun"
-        for (int w = 0; w < 3; w++) {
-            float seed = w * 100f;
+            double px = x, py = y, pz = z;
+            double time = (System.currentTimeMillis() + g * 300) * 0.002;
 
-            for (int i = 0; i < 25; i++) {
-                float progress = i / 25f;
+            for (int i = 0; i < length; i++) {
+                px += Math.sin(time + i * 0.5 + random.nextFloat()) * power * 0.1;
+                py += Math.cos(time * 1.3 + i * 0.4) * power * 0.08;
+                pz += Math.sin(time * 0.9 + i * 0.6) * power * 0.1;
 
-                float radius = 0.6f * (1f - progress);
-                float angleX = MathHelper.sin(time + seed + i * 0.3f) * radius;
-                float angleY = MathHelper.sin(time * 1.3f + seed + i * 0.2f) * 0.4f;
-                float angleZ = MathHelper.cos(time + seed + i * 0.25f) * radius;
+                float alpha = 1f - (float) i / length;
 
-                int alpha = (int) (180 * (1f - progress));
-
-                buffer.vertex(mat, angleX, angleY, angleZ)
-                        .color(base.getRed(), base.getGreen(), base.getBlue(), alpha);
+                buffer.vertex(matrix,
+                        (float) px,
+                        (float) py,
+                        (float) pz)
+                        .color(color.getRed(), color.getGreen(),
+                               color.getBlue(), (int) (alpha * 220));
             }
+
+            BufferRenderer.drawWithGlobalProgram(buffer.end());
         }
 
-        BufferRenderer.drawWithGlobalProgram(buffer.end());
-
         RenderSystem.enableDepthTest();
-        RenderSystem.enableCull();
         RenderSystem.disableBlend();
-        matrices.pop();
+    }
+
+    /* ================= BASIC ESP ================= */
+
+    private void renderCircle(Render3DEvent e, Entity target) {
+        // giữ trống hoặc dùng circle cũ của bạn
+    }
+
+    private void renderCube(Render3DEvent e, Entity target) {
+        // giữ trống hoặc dùng cube cũ của bạn
     }
 }
