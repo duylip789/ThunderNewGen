@@ -44,13 +44,14 @@ public final class HudEditor extends Module {
             case Rainbow -> Render2DEngine.rainbow(speed, count, 1f, 1f, 1f);
             case Fade -> Render2DEngine.fade(speed, count, c1, 1);
             case DoubleColor -> Render2DEngine.TwoColoreffect(c1, c2, speed, count);
-            case Eucalyptus -> {
-                // Màu xanh Neon cực đẹp như trong ảnh bạn gửi
-                Color neon1 = new Color(0, 251, 255); 
-                Color neon2 = new Color(0, 68, 255);  
+            
+            // CHẾ ĐỘ MÀU RIÊNG (Thay thế Analogous)
+            case Analogous -> {
+                Color neon1 = new Color(0, 251, 255); // Xanh sáng Neon
+                Color neon2 = new Color(0, 68, 255);  // Xanh Blue đậm
                 yield Render2DEngine.TwoColoreffect(neon1, neon2, speed, count);
             }
-            case Analogous -> Render2DEngine.interpolateColorsBackAndForth(speed, count, c1, Render2DEngine.getAnalogousColor(c2), true);
+            
             default -> c1;
         };
     }
