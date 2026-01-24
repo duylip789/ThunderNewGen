@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "thunderhack",
-  "version": "1.7",
+  "version": "0.1",
   "icon": "icon.png",
-  "name": "ThunderHack",
-  "description": "Player Assistance Mod",
+  "name": "ThunderHack NewGen",
+  "description": "No Leak",
   "authors": [
     {
-      "name": "pan4ur",
+      "name": "pan4ur,k1nzy",
       "contact": {
         "discord": "pan4ur"
       }
