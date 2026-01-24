@@ -19,7 +19,6 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import thunder.hack.ThunderHack;
 import thunder.hack.core.Managers;
-import thunder.hack.core.manager.client.ModuleManager;
 import thunder.hack.events.impl.*;
 import thunder.hack.injection.accesors.IInteractionManager;
 import thunder.hack.features.modules.Module;
@@ -77,18 +76,19 @@ public class Speed extends Module {
 
     @EventHandler
     public void onSync(EventSync e) {
+        if (mc.player == null) return;
         if (mc.player.isInFluid() && pauseInLiquids.getValue() || mc.player.isSneaking() && pauseWhileSneaking.getValue()) {
             return;
         }
 
         if (mode.getValue() == Mode.MatrixJB) {
             boolean closeToGround = false;
-
-            for (VoxelShape a : mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(0.5, 0.0, 0.5).offset(0.0, -1.0, 0.0)))
+            for (VoxelShape a : mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(0.5, 0.0, 0.5).offset(0.0, -1.0, 0.0))) {
                 if (a != VoxelShapes.empty()) {
                     closeToGround = true;
                     break;
                 }
+            }
 
             if (MovementUtility.isMoving() && closeToGround && mc.player.fallDistance <= 0) {
                 ThunderHack.TICK_TIMER = 1f;
@@ -103,6 +103,7 @@ public class Speed extends Module {
 
     @EventHandler
     public void modifyVelocity(EventPlayerTravel e) {
+        if (mc.player == null) return;
         if (mode.getValue() == Mode.GrimEntity && !e.isPre() && ThunderHack.core.getSetBackTime() > 1000) {
             for (PlayerEntity ent : Managers.ASYNC.getAsyncPlayers()) {
                 if (ent != mc.player && mc.player.squaredDistanceTo(ent) <= 2.25) {
@@ -128,7 +129,7 @@ public class Speed extends Module {
 
     @EventHandler
     public void onTick(EventTick e) {
-        //first author: Delyfss
+        if (mc.player == null) return;
         if ((mode.is(Mode.GrimIce) || mode.is(Mode.GrimCombo)) && mc.player.isOnGround()) {
             BlockPos pos = ((IEntity) mc.player).thunderHack_Recode$getVelocityBP();
             SearchInvResult result = InventoryUtility.findBlockInHotBar(Blocks.ICE, Blocks.PACKED_ICE, Blocks.BLUE_ICE);
@@ -161,6 +162,7 @@ public class Speed extends Module {
 
     @Override
     public void onUpdate() {
+        if (mc.player == null) return;
         if (mc.player.isInFluid() && pauseInLiquids.getValue() || mc.player.isSneaking() && pauseWhileSneaking.getValue()) {
             return;
         }
@@ -183,12 +185,12 @@ public class Speed extends Module {
                         mc.interactionManager.clickSlot(0, 6, 1, SlotActionType.PICKUP, mc.player);
                     }
                     mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_FALL_FLYING));
-                    int prevSlot = mc.player.getInventory().selectedSlot;
-                    if (prevSlot != fireSlot && !inOffHand)
+                    int currentPrevSlot = mc.player.getInventory().selectedSlot;
+                    if (currentPrevSlot != fireSlot && !inOffHand)
                         sendPacket(new UpdateSelectedSlotC2SPacket(fireSlot));
                     mc.interactionManager.interactItem(mc.player, inOffHand ? Hand.OFF_HAND : Hand.MAIN_HAND);
-                    if (prevSlot != fireSlot && !inOffHand)
-                        sendPacket(new UpdateSelectedSlotC2SPacket(prevSlot));
+                    if (currentPrevSlot != fireSlot && !inOffHand)
+                        sendPacket(new UpdateSelectedSlotC2SPacket(currentPrevSlot));
 
                     if (ellySlot != -2) {
                         mc.interactionManager.clickSlot(0, 6, 1, SlotActionType.PICKUP, mc.player);
@@ -207,19 +209,21 @@ public class Speed extends Module {
             }
             if (mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().expand(-0.29, 0, -0.29).offset(0.0, -3, 0.0f)).iterator().hasNext() && elytraDelay.passedMs(150) && startDelay.passedMs(500)) {
                 int elytra = InventoryUtility.getElytra();
-                if (elytra == -1) disable(isRu() ? "Для этого режима нужна элитра!" : "You need elytra for this mode!");
-                else Strafe.disabler(elytra);
-
-                mc.player.setVelocity(mc.player.getVelocity().getX(), 0f, mc.player.getVelocity().getZ());
-                if (isMoving())
-                    MovementUtility.setMotion(0.85);
-                elytraDelay.reset();
+                if (elytra == -1) {
+                    disable(isRu() ? "Для этого режима нужна элитра!" : "You need elytra for this mode!");
+                } else {
+                    Strafe.disabler(elytra);
+                    mc.player.setVelocity(mc.player.getVelocity().getX(), 0f, mc.player.getVelocity().getZ());
+                    if (isMoving()) MovementUtility.setMotion(0.85);
+                    elytraDelay.reset();
+                }
             }
         }
     }
 
     @EventHandler
     public void onPostPlayerUpdate(PostPlayerUpdateEvent event) {
+        if (mc.player == null) return;
         if (mode.getValue() == Mode.MatrixDamage) {
             if (MovementUtility.isMoving() && mc.player.hurtTime > hurttime.getValue()) {
                 if (mc.player.isOnGround()) {
@@ -240,22 +244,21 @@ public class Speed extends Module {
 
     @EventHandler
     public void onMove(EventMove event) {
+        if (mc.player == null) return;
         if (mc.player.isInFluid() && pauseInLiquids.getValue() || mc.player.isSneaking() && pauseWhileSneaking.getValue()) {
             return;
         }
         if (mode.getValue() != Mode.NCP && mode.getValue() != Mode.StrictStrafe) return;
-        if (mc.player.getAbilities().flying) return;
-        if (mc.player.isFallFlying()) return;
+        if (mc.player.getAbilities().flying || mc.player.isFallFlying()) return;
         if (mc.player.getHungerManager().getFoodLevel() <= 6) return;
         if (event.isCancelled()) return;
-        event.cancel();
 
         if (MovementUtility.isMoving()) {
+            event.cancel();
             ThunderHack.TICK_TIMER = useTimer.getValue() ? 1.088f : 1f;
             float currentSpeed = mode.getValue() == Mode.NCP && mc.player.input.movementForward <= 0 && prevForward > 0 ? Managers.PLAYER.currentPlayerSpeed * 0.66f : Managers.PLAYER.currentPlayerSpeed;
-            //boolean canJump = !mc.player.horizontalCollision || ModuleManager.step.isDisabled();
 
-         //   if (stage == 1 && mc.player.isOnGround() && canJump) {
+            if (stage == 1 && mc.player.isOnGround()) {
                 mc.player.setVelocity(mc.player.getVelocity().x, MovementUtility.getJumpSpeed(), mc.player.getVelocity().z);
                 event.setY(MovementUtility.getJumpSpeed());
                 baseSpeed *= 2.149;
@@ -263,13 +266,14 @@ public class Speed extends Module {
             } else if (stage == 2) {
                 baseSpeed = currentSpeed - (0.66 * (currentSpeed - MovementUtility.getBaseMoveSpeed()));
                 stage = 3;
-                if ((mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().offset(0.0, mc.player.getVelocity().getY(), 0.0)).iterator().hasNext() || mc.player.verticalCollision))
+            } else {
+                if (mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().offset(0.0, mc.player.getVelocity().getY(), 0.0)).iterator().hasNext() || mc.player.verticalCollision) {
                     stage = 1;
+                }
                 baseSpeed = currentSpeed - currentSpeed / 159.0D;
             }
 
             baseSpeed = Math.max(baseSpeed, MovementUtility.getBaseMoveSpeed());
-
             double ncpSpeed = mode.getValue() == Mode.StrictStrafe || mc.player.input.movementForward < 1 ? 0.465 : 0.576;
             double ncpBypassSpeed = mode.getValue() == Mode.StrictStrafe || mc.player.input.movementForward < 1 ? 0.44 : 0.57;
 
@@ -286,9 +290,7 @@ public class Speed extends Module {
             }
 
             baseSpeed = Math.min(baseSpeed, ticks > 25 ? ncpSpeed : ncpBypassSpeed);
-
-            if (ticks++ > 50)
-                ticks = 0;
+            if (ticks++ > 50) ticks = 0;
 
             MovementUtility.modifyEventSpeed(event, baseSpeed);
             prevForward = mc.player.input.movementForward;
@@ -298,4 +300,5 @@ public class Speed extends Module {
             event.setZ(0);
         }
     }
-}
+                            }
+                    
