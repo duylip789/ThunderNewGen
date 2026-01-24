@@ -30,9 +30,5 @@ public class MixinEndCrystalEntityRenderer {
 
     @Inject(method = "render(Lnet/minecraft/entity/decoration/EndCrystalEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", at = {@At("HEAD")}, cancellable = true)
     public void render(EndCrystalEntity endCrystalEntity, float f, float g, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, CallbackInfo ci) {
-        if(ModuleManager.chams.isEnabled() && ModuleManager.chams.crystals.getValue()) {
-            ci.cancel();
-            ModuleManager.chams.renderCrystal(endCrystalEntity, f, g, matrixStack, i, core, frame);
-        }
     }
 }
