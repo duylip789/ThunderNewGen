@@ -1,101 +1,116 @@
-package thunder.hack.features.modules.render;
+package thunder.hack.features.hud.impl;
 
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.gui.DrawContext;
+import org.jetbrains.annotations.NotNull;
+import thunder.hack.core.Managers;
+import thunder.hack.core.manager.client.ModuleManager;
+import thunder.hack.gui.font.FontRenderers;
+import thunder.hack.features.hud.HudElement;
 import thunder.hack.features.modules.Module;
-import thunder.hack.features.modules.combat.Aura;
+import thunder.hack.features.modules.client.HudEditor;
 import thunder.hack.setting.Setting;
-import thunder.hack.utility.render.Render3DEngine;
+import thunder.hack.setting.impl.ColorSetting;
+import thunder.hack.utility.render.Render2DEngine;
+import thunder.hack.utility.render.animation.AnimationUtility;
 
 import java.awt.*;
-import java.util.Random;
+import java.util.Objects;
 
-public class TargetESP extends Module {
+public class KeyBinds extends HudElement {
+    public final Setting<ColorSetting> oncolor = new Setting<>("OnColor", new ColorSetting(-1));
+    public final Setting<ColorSetting> offcolor = new Setting<>("OffColor", new ColorSetting(1));
+    public final Setting<Boolean> onlyEnabled = new Setting<>("OnlyEnabled", false);
 
-    public enum Mode {
-        NewGen
+    public KeyBinds() {
+        super("KeyBinds", 100, 100);
     }
 
-    private final Setting<Mode> mode =
-            new Setting<>("Mode", Mode.NewGen);
+    private float vAnimation, hAnimation;
 
-    public TargetESP() {
-        super("TargetESP", Category.RENDER);
-    }
+    public void onRender2D(DrawContext context) {
+        super.onRender2D(context);
 
-    @Override
-    public void onRender3D(MatrixStack matrices, float tickDelta) {
-        if (!Aura.isEnabled()) return;
+        int y_offset1 = 0;
+        float max_width = 50;
+        float maxBindWidth = 0;
 
-        Entity ent = Aura.target;
-        if (!(ent instanceof LivingEntity target)) return;
+        float pointerX = 0;
+        for (Module feature : Managers.MODULE.modules) {
+            if (feature.isDisabled() && onlyEnabled.getValue()) continue;
+            if (!Objects.equals(feature.getBind().getBind(), "None") && feature != ModuleManager.clickGui && feature != ModuleManager.thunderHackGui) {
+                if (y_offset1 == 0)
+                    y_offset1 += 4;
 
-        if (mode.getValue() == Mode.NewGen) {
-            renderGhost(target, tickDelta);
+                y_offset1 += 9;
+
+                float nameWidth = FontRenderers.sf_bold_mini.getStringWidth(feature.getName());
+                float bindWidth = FontRenderers.sf_bold_mini.getStringWidth(getShortKeyName(feature));
+
+                if (bindWidth > maxBindWidth)
+                    maxBindWidth = bindWidth;
+
+                if(nameWidth > pointerX)
+                    pointerX = nameWidth;
+            }
         }
-    }
 
-    /* ================= GHOST ESP ================= */
+        float px = getPosX() + 10 + pointerX;
+        max_width = Math.max(20 + pointerX + maxBindWidth, 50);
 
-    private void renderGhost(LivingEntity target, float tickDelta) {
-        Vec3d base = target.getLerpedPos(tickDelta);
+        vAnimation = AnimationUtility.fast(vAnimation, 14 + y_offset1, 15);
+        hAnimation = AnimationUtility.fast(hAnimation, max_width, 15);
 
-        float time = (System.currentTimeMillis() % 10_000L) / 1000f;
-        Color color = getColor();
+        Render2DEngine.drawHudBase(context.getMatrices(), getPosX(), getPosY(), hAnimation, vAnimation, HudEditor.hudRound.getValue());
 
-        for (int i = 0; i < 3; i++) {
-            float a = time * 2f + i * 2.1f;
-            float r = 0.6f + random(i) * 0.3f;
-
-            Vec3d end = base.add(
-                    Math.cos(a) * r,
-                    0.9 + Math.sin(time * 3 + i) * 0.4,
-                    Math.sin(a) * r
-            );
-
-            drawWorm(base.add(0, 0.9, 0), end, color);
+        if (HudEditor.hudStyle.is(HudEditor.HudStyle.Glowing)) {
+            FontRenderers.sf_bold.drawCenteredString(context.getMatrices(), "KeyBinds", getPosX() + hAnimation / 2, getPosY() + 4, HudEditor.textColor.getValue().getColorObject());
+        } else {
+            FontRenderers.sf_bold.drawGradientCenteredString(context.getMatrices(), "KeyBinds", getPosX() + hAnimation / 2, getPosY() + 4, 10);
         }
-    }
 
-    /* ============== GIUN NGHÍ NGOÁY ============== */
-
-    private void drawWorm(Vec3d start, Vec3d end, Color color) {
-        int seg = 12;
-
-        for (int i = 0; i < seg; i++) {
-            float t1 = i / (float) seg;
-            float t2 = (i + 1) / (float) seg;
-
-            Vec3d p1 = lerp(start, end, t1);
-            Vec3d p2 = lerp(start, end, t2);
-
-            float alpha = 1f - t1;
-
-            Render3DEngine.drawLine(
-                    p1,
-                    p2,
-                    new Color(
-                            color.getRed(),
-                            color.getGreen(),
-                            color.getBlue(),
-                            (int) (alpha * 180)
-                    )
-            );
+        if (y_offset1 > 0) {
+            if (HudEditor.hudStyle.is(HudEditor.HudStyle.Blurry)) {
+                Render2DEngine.drawRectDumbWay(context.getMatrices(), getPosX() + 4, getPosY() + 13, getPosX() + getWidth() - 4, getPosY() + 13.5f, new Color(0x54FFFFFF, true));
+            } else {
+                Render2DEngine.horizontalGradient(context.getMatrices(), getPosX() + 2, getPosY() + 13.7f, getPosX() + 2 + hAnimation / 2f - 2, getPosY() + 14, Render2DEngine.injectAlpha(HudEditor.textColor.getValue().getColorObject(), 0), HudEditor.textColor.getValue().getColorObject());
+                Render2DEngine.horizontalGradient(context.getMatrices(), getPosX() + 2 + hAnimation / 2f - 2, getPosY() + 13.7f, getPosX() + 2 + hAnimation - 4, getPosY() + 14, HudEditor.textColor.getValue().getColorObject(), Render2DEngine.injectAlpha(HudEditor.textColor.getValue().getColorObject(), 0));
+            }
         }
+
+
+        Render2DEngine.addWindow(context.getMatrices(), getPosX(), getPosY(), getPosX() + hAnimation, getPosY() + vAnimation, 1f);
+        int y_offset = 0;
+        for (Module feature : Managers.MODULE.modules) {
+            if (feature.isDisabled() && onlyEnabled.getValue())
+                continue;
+            if (!Objects.equals(feature.getBind().getBind(), "None") && feature != ModuleManager.clickGui && feature != ModuleManager.thunderHackGui) {
+                FontRenderers.sf_bold_mini.drawString(context.getMatrices(), feature.getName(), getPosX() + 5, getPosY() + 19 + y_offset, feature.isOn() ? oncolor.getValue().getColor() : offcolor.getValue().getColor());
+                FontRenderers.sf_bold_mini.drawCenteredString(context.getMatrices(),  getShortKeyName(feature),
+
+                        px + (getPosX() + max_width - px) / 2f,
+
+                        getPosY() + 19 + y_offset, feature.isOn() ? oncolor.getValue().getColor() : offcolor.getValue().getColor());
+                Render2DEngine.drawRect(context.getMatrices(), px, getPosY() + 17 + y_offset, 0.5f, 8, new Color(0x44FFFFFF, true));
+
+                y_offset += 9;
+            }
+        }
+        Render2DEngine.popWindow();
+        setBounds(getPosX(), getPosY(), hAnimation, vAnimation);
     }
 
-    private Vec3d lerp(Vec3d a, Vec3d b, float t) {
-        return new Vec3d(
-                MathHelper.lerp(t, a.x, b.x),
-                MathHelper.lerp(t, a.y, b.y),
-                MathHelper.lerp(t, a.z, b.z)
-        );
+    @NotNull
+    public static String getShortKeyName(Module feature) {
+        String sbind = feature.getBind().getBind();
+        return switch (feature.getBind().getBind()) {
+            case "LEFT_CONTROL" -> "LCtrl";
+            case "RIGHT_CONTROL" -> "RCtrl";
+            case "LEFT_SHIFT" -> "LShift";
+            case "RIGHT_SHIFT" -> "RShift";
+            case "LEFT_ALT" -> "LAlt";
+            case "RIGHT_ALT" -> "RAlt";
+            default -> sbind.toUpperCase();
+        };
     }
-
-    private float random(int seed) {
-        return new Random(seed * 9999L).nextFloat() - 0.5f;
     }
-}
+        
