@@ -22,9 +22,7 @@ public abstract class MixinKeyBinding {
         if(     this.equals(mc.options.sneakKey)
                 && mc.player != null
                 && mc.world != null
-                && ModuleManager.safeWalk.isEnabled()
                 && mc.player.isOnGround() && mc.world.getBlockState(new BlockPos((int) Math.floor(mc.player.getPos().getX()), (int) Math.floor(mc.player.getPos().getY()) - 1, (int) Math.floor(mc.player.getPos().getZ()))).isAir()
-                && !ModuleManager.scaffold.isEnabled()){
             cir.setReturnValue(true);
         }
     }
