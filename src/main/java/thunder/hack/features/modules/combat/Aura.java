@@ -22,11 +22,12 @@ import thunder.hack.setting.impl.BooleanSettingGroup;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.player.InventoryUtility;
+import thunder.hack.core.ModuleManager;
 
 import java.util.Comparator;
 
 public class Aura extends Module {
-    // --- MAIN SETTINGS ---
+    // --- MAIN ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -50,7 +51,7 @@ public class Aura extends Module {
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(attackSettings);
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
 
-    // --- ROTATION SETTINGS (Advance cũ) ---
+    // --- ROTATION SETTINGS ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Integer> minYawStep = new Setting<>("MinYawStep", 65, 1, 180).addToGroup(rotationSettings);
@@ -62,7 +63,7 @@ public class Aura extends Module {
     public final Setting<SprintMode> sprint = new Setting<>("Sprint", SprintMode.HVH);
     public final Setting<Sort> sort = new Setting<>("Sort", Sort.LowestDistance);
 
-    // --- TARGETS (Full) ---
+    // --- TARGETS ---
     public final Setting<SettingGroup> targetsGroup = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targetsGroup);
@@ -72,6 +73,9 @@ public class Aura extends Module {
     public final Setting<Boolean> hostiles = new Setting<>("Hostiles", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", true).addToGroup(targetsGroup);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup);
+    
+    // Thêm Setting này để Mixin không bị lỗi
+    public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20);
 
     public static Entity target;
     private float lastYaw, lastPitch;
@@ -86,7 +90,6 @@ public class Aura extends Module {
         target = findTarget();
         if (target == null) return;
 
-        // Rotation Smoothing
         float[] rots = getHVHRotations(target);
         float yawDiff = MathHelper.wrapDegrees(rots[0] - lastYaw);
         float yawStep = MathHelper.clamp(yawDiff, -maxYawStep.getValue(), maxYawStep.getValue());
@@ -102,7 +105,7 @@ public class Aura extends Module {
             mc.player.setPitch(lastPitch);
         }
 
-        // Logic Auto Firework
+        // Elytra Target Logic
         if (elytraTarget.getValue() && target instanceof PlayerEntity pl && pl.isFallFlying()) {
             if (fireworkTimer.passedMs(500)) {
                 int fw = InventoryUtility.getItemSlot(Items.FIREWORK_ROCKET);
@@ -116,15 +119,13 @@ public class Aura extends Module {
             }
         }
 
-        // Attack Logic (HVH Sprint Reset)
+        // Attack Logic
         if (canAttack()) {
             if (sprint.getValue() == SprintMode.HVH) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
             }
-
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(attackHand.getValue() == AttackHand.OffHand ? Hand.OFF_HAND : Hand.MAIN_HAND);
-
             if (sprint.getValue() == SprintMode.HVH) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
             }
@@ -133,7 +134,7 @@ public class Aura extends Module {
 
     private boolean canAttack() {
         if (!(target instanceof LivingEntity)) return false;
-        if (smartCrit.getValue().isEnabled() && onlySpace.getValue() && mc.player.isOnGround()) return false;
+        if (smartCrit.getValue().isEnabled() && onlySpace.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.1f)) return false;
         float cd = attackCooldown.getValue();
         if (tpsSync.getValue()) cd *= (20.0f / Managers.TICK.getTPS());
         return mc.player.getAttackCooldownProgress(0.5f) >= cd;
@@ -159,22 +160,32 @@ public class Aura extends Module {
     }
 
     private float[] getHVHRotations(Entity entity) {
-        Vec3d eyes = mc.player.getEyePos();
         Vec3d targetPos = entity.getBoundingBox().getCenter();
-        double diffX = targetPos.x - eyes.x;
-        double diffY = targetPos.y - eyes.y;
-        double diffZ = targetPos.z - eyes.z;
+        double diffX = targetPos.x - mc.player.getX();
+        double diffY = targetPos.y - mc.player.getEyePos().y;
+        double diffZ = targetPos.z - mc.player.getZ();
         double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
         return new float[]{(float) Math.toDegrees(Math.atan2(diffZ, diffX)) - 90F, (float) -Math.toDegrees(Math.atan2(diffY, diffXZ))};
     }
 
-    // --- ENUMS (Đảm bảo đầy đủ đóng ngoặc) ---
+    // --- CÁC CLASS/ENUM CẦN THIẾT ĐỂ FIX LỖI BUILD MIXIN ---
+    public static class Position {
+        private double x, y, z;
+        private int ticks;
+        public Position(double x, double y, double z) { this.x = x; this.y = y; this.z = z; }
+        public boolean shouldRemove() { return ticks++ > 20; }
+        public double getX() { return x; }
+        public double getY() { return y; }
+        public double getZ() { return z; }
+    }
+
+    public enum Resolver { Off, Advantage, Predictive, BackTrack }
+    public enum RayTrace { OFF, OnlyTarget, AllEntities }
+    public enum Mode { Interact, Track, Grim, None }
     public enum SprintMode { Off, Normal, HVH }
-    public enum Mode { Track, Interact, Grim, None }
     public enum Switch { Normal, None, Silent }
     public enum Sort { LowestDistance, HighestDistance, LowestHealth, FOV }
-    public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum AttackHand { MainHand, OffHand, None }
     public enum ESP { Off, ThunderHack, ThunderHackV2 }
-} // DẤU NGOẶC ĐÓNG CUỐI CÙNG CỦA CLASS
-                    
+                    }
+    
