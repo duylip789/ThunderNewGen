@@ -22,12 +22,13 @@ import thunder.hack.setting.impl.BooleanSettingGroup;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.player.InventoryUtility;
-import thunder.hack.core.ModuleManager;
 
 import java.util.Comparator;
+import java.util.List;
+import java.util.ArrayList;
 
 public class Aura extends Module {
-    // --- MAIN ---
+    // --- MAIN SETTINGS ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -74,7 +75,7 @@ public class Aura extends Module {
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", true).addToGroup(targetsGroup);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup);
     
-    // Thêm Setting này để Mixin không bị lỗi
+    // Mixin fix
     public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20);
 
     public static Entity target;
@@ -100,12 +101,13 @@ public class Aura extends Module {
 
         event.setYaw(lastYaw);
         event.setPitch(lastPitch);
+        
         if (clientLook.getValue()) {
             mc.player.setYaw(lastYaw);
             mc.player.setPitch(lastPitch);
         }
 
-        // Elytra Target Logic
+        // Logic Elytra Firework
         if (elytraTarget.getValue() && target instanceof PlayerEntity pl && pl.isFallFlying()) {
             if (fireworkTimer.passedMs(500)) {
                 int fw = InventoryUtility.getItemSlot(Items.FIREWORK_ROCKET);
@@ -119,7 +121,7 @@ public class Aura extends Module {
             }
         }
 
-        // Attack Logic
+        // Logic Attack HVH
         if (canAttack()) {
             if (sprint.getValue() == SprintMode.HVH) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
@@ -160,15 +162,16 @@ public class Aura extends Module {
     }
 
     private float[] getHVHRotations(Entity entity) {
+        Vec3d eyes = mc.player.getEyePos();
         Vec3d targetPos = entity.getBoundingBox().getCenter();
-        double diffX = targetPos.x - mc.player.getX();
-        double diffY = targetPos.y - mc.player.getEyePos().y;
-        double diffZ = targetPos.z - mc.player.getZ();
+        double diffX = targetPos.x - eyes.x;
+        double diffY = targetPos.y - eyes.y;
+        double diffZ = targetPos.z - eyes.z;
         double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
         return new float[]{(float) Math.toDegrees(Math.atan2(diffZ, diffX)) - 90F, (float) -Math.toDegrees(Math.atan2(diffY, diffXZ))};
     }
 
-    // --- CÁC CLASS/ENUM CẦN THIẾT ĐỂ FIX LỖI BUILD MIXIN ---
+    // --- CÁC CLASS/ENUM CẦN THIẾT ĐỂ BUILD MIXIN ---
     public static class Position {
         private double x, y, z;
         private int ticks;
@@ -187,5 +190,5 @@ public class Aura extends Module {
     public enum Sort { LowestDistance, HighestDistance, LowestHealth, FOV }
     public enum AttackHand { MainHand, OffHand, None }
     public enum ESP { Off, ThunderHack, ThunderHackV2 }
-                    }
-    
+    public enum WallsBypass { Off, V1, V2 }
+    }
