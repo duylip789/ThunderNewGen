@@ -45,8 +45,6 @@ public class ModuleManager implements IManager {
     public static ClientSettings clientSettings = new ClientSettings();
     public static TimerIndicator timerIndicator = new TimerIndicator();
     public static ThunderHackGui thunderHackGui = new ThunderHackGui();
-    public static BreakHighLight breakHighLight = new BreakHighLight();
-    public static BlockHighLight blockHighLight = new BlockHighLight();
     public static TotemAnimation totemAnimation = new TotemAnimation();
     public static OptifineCapes optifineCapes = new OptifineCapes();
     public static Notifications notifications = new Notifications();
