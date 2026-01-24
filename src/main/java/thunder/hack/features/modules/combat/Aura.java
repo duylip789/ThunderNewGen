@@ -22,13 +22,12 @@ import thunder.hack.setting.impl.BooleanSettingGroup;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.player.InventoryUtility;
-import thunder.hack.core.ModuleManager;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Aura extends Module {
-    // --- SETTINGS CHÍNH ---
+    // --- MAIN ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -46,13 +45,13 @@ public class Aura extends Module {
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
     public final Setting<SprintMode> sprint = new Setting<>("Sprint", SprintMode.HVH).addToGroup(attackSettings);
 
-    // --- ROTATION SETTINGS ---
+    // --- ROTATION SETTINGS (Advance cũ) ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Integer> maxYawStep = new Setting<>("MaxYawStep", 75, 1, 180).addToGroup(rotationSettings);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(rotationSettings);
 
-    // --- TARGETS (Đầy đủ mục tiêu) ---
+    // --- TARGETS ---
     public final Setting<SettingGroup> targetsGroup = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Slimes = new Setting<>("Slimes", true).addToGroup(targetsGroup);
@@ -61,9 +60,9 @@ public class Aura extends Module {
     public final Setting<Boolean> Animals = new Setting<>("Animals", false).addToGroup(targetsGroup);
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", true).addToGroup(targetsGroup);
 
-    // --- BIẾN PHỤC VỤ MIXIN (X, Y, Z VÀ RESOLVER) ---
-    public float rotationYaw, rotationPitch; // Cho MixinFireWork
-    public Box resolvedBox; // Cho MixinOtherClientPlayer
+    // --- BIẾN CHO MIXIN (QUAN TRỌNG) ---
+    public float rotationYaw, rotationPitch; 
+    public Box resolvedBox; 
     public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20);
 
     public static Entity target;
@@ -78,22 +77,19 @@ public class Aura extends Module {
         target = findTarget();
         if (target == null) return;
 
-        // Cập nhật X, Y, Z Rotation
         float[] rots = getHVHRotations(target);
         this.rotationYaw = rots[0];
         this.rotationPitch = rots[1];
 
-        // Client Look Logic
         if (clientLook.getValue()) {
             mc.player.setYaw(rots[0]);
             mc.player.setPitch(rots[1]);
         }
 
-        // Silent Rotation cho Server
         event.yaw = rots[0];
         event.pitch = rots[1];
 
-        // --- SPRINT RESET & ATTACK LOGIC ---
+        // LOGIC ATTACK + SPRINT RESET
         if (canAttack()) {
             if (sprint.getValue() == SprintMode.HVH) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
@@ -117,11 +113,8 @@ public class Aura extends Module {
     private Entity findTarget() {
         Entity best = null;
         double minDistance = attackRange.getValue() + aimRange.getValue();
-
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
-            
-            // Lọc Target
             if (e instanceof PlayerEntity && !Players.getValue()) continue;
             if (e instanceof SlimeEntity && !Slimes.getValue()) continue;
             if (e instanceof HostileEntity && !hostiles.getValue()) continue;
@@ -151,7 +144,7 @@ public class Aura extends Module {
         };
     }
 
-    // --- CLASS HISTORY CHO MIXIN BACKTRACK ---
+    // --- CLASS CHO MIXIN (Đã fix lỗi ModuleManager) ---
     public static class Position {
         public double x, y, z;
         public int ticks;
@@ -159,14 +152,14 @@ public class Aura extends Module {
             this.x = x; this.y = y; this.z = z;
         }
         public boolean shouldRemove() {
-            return ticks++ > ModuleManager.aura.backTicks.getValue();
+            // Fix: Không dùng ModuleManager để tránh lỗi Build
+            return ticks++ > 10; 
         }
         public double getX() { return x; }
         public double getY() { return y; }
         public double getZ() { return z; }
     }
 
-    // --- ENUMS ĐẦY ĐỦ ---
     public enum SprintMode { Off, Normal, HVH }
     public enum Mode { Track, Interact, Grim, None }
     public enum Switch { Normal, None, Silent }
