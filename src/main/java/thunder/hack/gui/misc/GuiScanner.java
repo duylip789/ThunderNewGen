@@ -4,7 +4,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import thunder.hack.core.manager.client.ModuleManager;
-import thunder.hack.features.modules.misc.NoCommentExploit;
 import thunder.hack.gui.font.FontRenderers;
 import thunder.hack.utility.render.Render2DEngine;
 
@@ -17,8 +16,6 @@ public class GuiScanner extends Screen {
     public static boolean neartrack = false;
     public static boolean track = false;
     public static boolean busy = false;
-
-    public ArrayList<NoCommentExploit.Cout> consoleout = new ArrayList<>();
 
     int radarx, radary, radarx1, radary1, centerx, centery, consolex, consoley, consolex1, consoley1, hovery, hoverx, searchx, searchy, wheely;
 
