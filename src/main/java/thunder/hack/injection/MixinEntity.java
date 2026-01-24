@@ -111,12 +111,10 @@ public abstract class MixinEntity implements IEntity {
     @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 0, argsOnly = true)
     private double changeLookDirectionHook0(double value) {
             return 0d;
-        return value;
     }
 
     @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 1, argsOnly = true)
     private double changeLookDirectionHook1(double value) {
             return 0d;
-        return value;
     }
 }
