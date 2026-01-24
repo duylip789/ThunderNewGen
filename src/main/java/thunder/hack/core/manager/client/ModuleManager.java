@@ -227,7 +227,6 @@ public class ModuleManager implements IManager {
     public static Blink blink = new Blink();
     public static NoBob noBob = new NoBob();
     public static XRay xray = new XRay();
-    public static Step step = new Step();
     public static Aura aura = new Aura();
     public static TargetESP targetESP = new TargetESP();
     public static FOV fov = new FOV();
