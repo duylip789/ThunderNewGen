@@ -263,7 +263,6 @@ public class Speed extends Module {
             } else if (stage == 2) {
                 baseSpeed = currentSpeed - (0.66 * (currentSpeed - MovementUtility.getBaseMoveSpeed()));
                 stage = 3;
-            } else {
                 if ((mc.world.getBlockCollisions(mc.player, mc.player.getBoundingBox().offset(0.0, mc.player.getVelocity().getY(), 0.0)).iterator().hasNext() || mc.player.verticalCollision))
                     stage = 1;
                 baseSpeed = currentSpeed - currentSpeed / 159.0D;
