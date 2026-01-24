@@ -90,7 +90,6 @@ public class ModuleManager implements IManager {
     public static WorldTweaks worldTweaks = new WorldTweaks();
     public static VisualRange visualRange = new VisualRange();
     public static Speedometer speedometer = new Speedometer();
-    public static ReverseStep reverseStep = new ReverseStep();
     public static NoJumpDelay noJumpDelay = new NoJumpDelay();
     public static NameProtect nameProtect = new NameProtect();
     public static MiddleClick middleClick = new MiddleClick();
