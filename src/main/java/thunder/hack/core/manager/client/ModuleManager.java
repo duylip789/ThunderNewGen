@@ -123,6 +123,7 @@ public class ModuleManager implements IManager {
     public static AntiCrash antiCrash = new AntiCrash();
     public static Velocity velocity = new Velocity();
     public static Surround surround = new Surround();
+    public static VHat vHat = new VHat();
     public static PopChams popChams = new PopChams();
     public static NoRender noRender = new NoRender();
     public static NameTags nameTags = new NameTags();
