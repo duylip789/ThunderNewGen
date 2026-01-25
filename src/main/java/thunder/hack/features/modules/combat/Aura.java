@@ -24,7 +24,7 @@ import thunder.hack.utility.Timer;
 import thunder.hack.utility.player.InventoryUtility;
 
 public class Aura extends Module {
-    // --- MAIN SETTINGS ---
+    // --- MAIN ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -41,7 +41,7 @@ public class Aura extends Module {
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(attackSettings);
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
 
-    // --- ROTATION SETTINGS ---
+    // --- ROTATION/ADVANCED ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(rotationSettings);
@@ -62,9 +62,8 @@ public class Aura extends Module {
     public final Setting<Boolean> Villagers = new Setting<>("Villagers", false).addToGroup(targetsGroup);
     public final Setting<Boolean> Slimes = new Setting<>("Slimes", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", false).addToGroup(targetsGroup);
-    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup); // Mixin/Rotations cần cái này
+    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup);
 
-    // --- MIXIN BIẾN ---
     public float rotationYaw, rotationPitch;
     public Box resolvedBox;
     public static Entity target;
@@ -74,22 +73,13 @@ public class Aura extends Module {
         super("Aura", Category.COMBAT);
     }
 
-    // --- HÀM CÁC MODULE KHÁC ĐANG GỌI ---
-    public void pause() {
-        pauseTimer.reset();
-    }
-
-    public float getAttackCooldown() {
-        return attackCooldown.getValue();
-    }
-
-    public boolean isAboveWater() {
-        return mc.player.isSubmergedInWater() || mc.world.getBlockState(mc.player.getBlockPos()).getBlock().getBlastResistance() < 1f; // Logic cơ bản
-    }
+    public void pause() { pauseTimer.reset(); }
+    public float getAttackCooldown() { return attackCooldown.getValue(); }
+    public boolean isAboveWater() { return mc.player.isInLava() || mc.player.isSubmergedInWater(); }
 
     @EventHandler
     public void onSync(EventSync event) {
-        if (!pauseTimer.passedMs(500)) return; // Logic pause cho PearlChaser/AutoBuff
+        if (!pauseTimer.passedMs(500)) return;
 
         target = findTarget();
         if (target == null) return;
@@ -103,16 +93,25 @@ public class Aura extends Module {
             mc.player.setPitch(rots[1]);
         }
 
-        // Dùng phương thức set vì biến yaw/pitch bị private
-        event.setYaw(rots[0]);
-        event.setPitch(rots[1]);
+        // FIX LỖI "cannot find symbol setYaw": 
+        // Trong một số bản Thunder, EventSync dùng field public thay vì setter
+        try {
+            event.getClass().getField("yaw").setFloat(event, rots[0]);
+            event.getClass().getField("pitch").setFloat(event, rots[1]);
+        } catch (Exception e) {
+            // Nếu không có field public, dùng Managers (Cách này an toàn nhất cho Build)
+            Managers.ROTATION.setRotation(rots[0], rots[1]);
+        }
 
         if (canAttack()) {
+            // SPRINT LOGIC ĐÂY BRO
             if (dropSprint.getValue()) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
             }
+            
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(attackHand.getValue() == AttackHand.OffHand ? Hand.OFF_HAND : Hand.MAIN_HAND);
+            
             if (returnSprint.getValue()) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
             }
@@ -122,7 +121,7 @@ public class Aura extends Module {
     private boolean canAttack() {
         if (!(target instanceof LivingEntity)) return false;
         if (pauseInInventory.getValue() && mc.currentScreen != null) return false;
-        if (onlySpace.getValue() && mc.player.isOnGround()) return false;
+        if (onlySpace.getValue() && (mc.player.isOnGround() || mc.player.fallDistance < 0.12f)) return false;
         return mc.player.getAttackCooldownProgress(0.5f) >= attackCooldown.getValue();
     }
 
@@ -171,4 +170,4 @@ public class Aura extends Module {
     public enum Mode { Interact, Track, Grim, None }
     public enum AttackHand { MainHand, OffHand, None }
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2 }
-                          }
+}
