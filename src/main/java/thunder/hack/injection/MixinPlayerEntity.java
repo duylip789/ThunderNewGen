@@ -28,6 +28,7 @@ import static thunder.hack.features.modules.Module.mc;
 
 @Mixin(value = PlayerEntity.class, priority = 800)
 public class MixinPlayerEntity {
+
     @Inject(method = "getAttackCooldownProgressPerTick", at = @At("HEAD"), cancellable = true)
     public void getAttackCooldownProgressPerTickHook(CallbackInfoReturnable<Float> cir) {
         if (ModuleManager.aura.isEnabled() && ModuleManager.aura.switchMode.getValue() == Aura.Switch.Silent) {
@@ -46,8 +47,11 @@ public class MixinPlayerEntity {
     public void attackAHook(CallbackInfo callbackInfo) {
         if (ModuleManager.autoSprint.isEnabled() && AutoSprint.sprint.getValue()) {
             final float multiplier = 0.6f + 0.4f * AutoSprint.motion.getValue();
-            mc.player.setVelocity(mc.player.getVelocity().x / 0.6 * multiplier, mc.player.getVelocity().y, mc.player.getVelocity().z / 0.6 * multiplier);
-            mc.player.setSprinting(true);
+            if (mc.player != null) {
+                Vec3d velocity = mc.player.getVelocity();
+                mc.player.setVelocity(velocity.x / 0.6 * multiplier, velocity.y, velocity.z / 0.6 * multiplier);
+                mc.player.setSprinting(true);
+            }
         }
     }
 
@@ -67,30 +71,27 @@ public class MixinPlayerEntity {
         }
     }
 
+    // --- FIX DI CHUYỂN Ở ĐÂY ---
     @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
     private void onTravelhookPre(Vec3d movementInput, CallbackInfo ci) {
-        if (mc.player == null)
-            return;
+        if (mc.player == null) return;
 
         final EventPlayerTravel event = new EventPlayerTravel(movementInput, true);
         ThunderHack.EVENT_BUS.post(event);
+        
         if (event.isCancelled()) {
-            mc.player.move(MovementType.SELF, mc.player.getVelocity());
+            // Xóa bỏ mc.player.move dư thừa gây đứng hình
             ci.cancel();
         }
     }
 
-
-    @Inject(method = "travel", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "travel", at = @At("RETURN"))
     private void onTravelhookPost(Vec3d movementInput, CallbackInfo ci) {
-        if (mc.player == null)
-            return;
+        if (mc.player == null) return;
+        
         final EventPlayerTravel event = new EventPlayerTravel(movementInput, false);
         ThunderHack.EVENT_BUS.post(event);
-        if (event.isCancelled()) {
-            mc.player.move(MovementType.SELF, mc.player.getVelocity());
-            ci.cancel();
-        }
+        // Tại RETURN không cần ci.cancel() vì hàm đã chạy xong
     }
 
     @Inject(method = "jump", at = @At("HEAD"))
@@ -117,24 +118,20 @@ public class MixinPlayerEntity {
     @Inject(method = "getBlockInteractionRange", at = @At("HEAD"), cancellable = true)
     public void getBlockInteractionRangeHook(CallbackInfoReturnable<Double> cir) {
         if (ModuleManager.reach.isEnabled()) {
-            if (ModuleManager.reach.Creative.getValue() && mc.player.isCreative()) {
-                cir.setReturnValue((double) ModuleManager.reach.creativeBlocksRange.getValue());
-            }
-            else {
-                cir.setReturnValue((double) ModuleManager.reach.blocksRange.getValue());
-            }
+            double range = mc.player != null && mc.player.isCreative() ? 
+                ModuleManager.reach.creativeBlocksRange.getValue() : 
+                ModuleManager.reach.blocksRange.getValue();
+            cir.setReturnValue(range);
         }
     }
 
     @Inject(method = "getEntityInteractionRange", at = @At("HEAD"), cancellable = true)
     public void getEntityInteractionRangeHook(CallbackInfoReturnable<Double> cir) {
         if (ModuleManager.reach.isEnabled()) {
-            if (ModuleManager.reach.Creative.getValue() && mc.player.isCreative()) {
-                cir.setReturnValue((double) ModuleManager.reach.creativeEntityRange.getValue());
-            }
-            else {
-                cir.setReturnValue((double) ModuleManager.reach.entityRange.getValue());
-            }
+            double range = mc.player != null && mc.player.isCreative() ? 
+                ModuleManager.reach.creativeEntityRange.getValue() : 
+                ModuleManager.reach.entityRange.getValue();
+            cir.setReturnValue(range);
         }
     }
 }
