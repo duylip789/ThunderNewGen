@@ -23,11 +23,8 @@ import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 import thunder.hack.utility.player.InventoryUtility;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Aura extends Module {
-    // --- MAIN ---
+    // --- MAIN SETTINGS ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -44,7 +41,7 @@ public class Aura extends Module {
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(attackSettings);
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
 
-    // --- ROTATION SETTINGS (Đã đổi tên từ Advanced) ---
+    // --- ROTATION SETTINGS ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(rotationSettings);
@@ -57,7 +54,7 @@ public class Aura extends Module {
     public final Setting<Boolean> returnSprint = new Setting<>("ReturnSprint", true, v -> dropSprint.getValue()).addToGroup(rotationSettings);
     public final Setting<Boolean> pauseInInventory = new Setting<>("PauseInInventory", true).addToGroup(rotationSettings);
 
-    // --- TARGETS (Nằm ở đây nè bro) ---
+    // --- TARGETS ---
     public final Setting<SettingGroup> targetsGroup = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targetsGroup);
@@ -65,20 +62,35 @@ public class Aura extends Module {
     public final Setting<Boolean> Villagers = new Setting<>("Villagers", false).addToGroup(targetsGroup);
     public final Setting<Boolean> Slimes = new Setting<>("Slimes", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", false).addToGroup(targetsGroup);
+    public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup); // Mixin/Rotations cần cái này
 
-    // --- BIẾN MIXIN ---
+    // --- MIXIN BIẾN ---
     public float rotationYaw, rotationPitch;
     public Box resolvedBox;
-
     public static Entity target;
-    private final Timer fireworkTimer = new Timer();
+    private final Timer pauseTimer = new Timer();
 
     public Aura() {
         super("Aura", Category.COMBAT);
     }
 
+    // --- HÀM CÁC MODULE KHÁC ĐANG GỌI ---
+    public void pause() {
+        pauseTimer.reset();
+    }
+
+    public float getAttackCooldown() {
+        return attackCooldown.getValue();
+    }
+
+    public boolean isAboveWater() {
+        return mc.player.isSubmergedInWater() || mc.world.getBlockState(mc.player.getBlockPos()).getBlock().getBlastResistance() < 1f; // Logic cơ bản
+    }
+
     @EventHandler
     public void onSync(EventSync event) {
+        if (!pauseTimer.passedMs(500)) return; // Logic pause cho PearlChaser/AutoBuff
+
         target = findTarget();
         if (target == null) return;
 
@@ -91,8 +103,9 @@ public class Aura extends Module {
             mc.player.setPitch(rots[1]);
         }
 
-        event.yaw = rots[0];
-        event.pitch = rots[1];
+        // Dùng phương thức set vì biến yaw/pitch bị private
+        event.setYaw(rots[0]);
+        event.setPitch(rots[1]);
 
         if (canAttack()) {
             if (dropSprint.getValue()) {
@@ -118,8 +131,6 @@ public class Aura extends Module {
         double minDistance = attackRange.getValue() + aimRange.getValue();
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
-            
-            // Check Target Setting
             if (e instanceof PlayerEntity && !Players.getValue()) continue;
             if (e instanceof HostileEntity && !Mobs.getValue()) continue;
             if (e instanceof SlimeEntity && !Slimes.getValue()) continue;
@@ -160,4 +171,4 @@ public class Aura extends Module {
     public enum Mode { Interact, Track, Grim, None }
     public enum AttackHand { MainHand, OffHand, None }
     public enum ESP { Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2 }
-}
+                          }
