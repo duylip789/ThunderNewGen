@@ -21,7 +21,6 @@ import thunder.hack.setting.Setting;
 import thunder.hack.setting.impl.BooleanSettingGroup;
 import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
-import thunder.hack.utility.player.InventoryUtility;
 
 public class Aura extends Module {
     // --- MAIN ---
@@ -40,8 +39,9 @@ public class Aura extends Module {
     public final Setting<Boolean> onlySpace = new Setting<>("OnlyCrit", false).addToGroup(smartCrit);
     public final Setting<Float> attackCooldown = new Setting<>("AttackCooldown", 0.9f, 0.5f, 1f).addToGroup(attackSettings);
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
+    public final Setting<SprintMode> sprintMode = new Setting<>("SprintMode", SprintMode.HVH).addToGroup(attackSettings);
 
-    // --- ROTATION/ADVANCED ---
+    // --- ROTATION SETTINGS ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(rotationSettings);
@@ -75,7 +75,7 @@ public class Aura extends Module {
 
     public void pause() { pauseTimer.reset(); }
     public float getAttackCooldown() { return attackCooldown.getValue(); }
-    public boolean isAboveWater() { return mc.player.isInLava() || mc.player.isSubmergedInWater(); }
+    public boolean isAboveWater() { return mc.player.isSubmergedInWater(); }
 
     @EventHandler
     public void onSync(EventSync event) {
@@ -93,26 +93,21 @@ public class Aura extends Module {
             mc.player.setPitch(rots[1]);
         }
 
-        // FIX LỖI "cannot find symbol setYaw": 
-        // Trong một số bản Thunder, EventSync dùng field public thay vì setter
-        try {
-            event.getClass().getField("yaw").setFloat(event, rots[0]);
-            event.getClass().getField("pitch").setFloat(event, rots[1]);
-        } catch (Exception e) {
-            // Nếu không có field public, dùng Managers (Cách này an toàn nhất cho Build)
-            Managers.ROTATION.setRotation(rots[0], rots[1]);
-        }
+        // Dùng Managers.PLAYER để set rotation vì EventSync bản này có thể bị lock
+        Managers.PLAYER.setRotation(rots[0], rots[1]);
 
         if (canAttack()) {
-            // SPRINT LOGIC ĐÂY BRO
-            if (dropSprint.getValue()) {
+            // Logic Sprint Mode
+            boolean hvhSprint = sprintMode.getValue() == SprintMode.HVH || dropSprint.getValue();
+            
+            if (hvhSprint) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
             }
             
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(attackHand.getValue() == AttackHand.OffHand ? Hand.OFF_HAND : Hand.MAIN_HAND);
             
-            if (returnSprint.getValue()) {
+            if (hvhSprint && returnSprint.getValue()) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
             }
         }
@@ -164,6 +159,7 @@ public class Aura extends Module {
         public double getX() { return x; } public double getY() { return y; } public double getZ() { return z; }
     }
 
+    public enum SprintMode { Off, Normal, HVH }
     public enum RayTrace { OFF, OnlyTarget, AllEntities }
     public enum Switch { Normal, None, Silent }
     public enum Resolver { Off, Advantage, Predictive, BackTrack; public boolean is(Resolver r) { return this == r; } }
