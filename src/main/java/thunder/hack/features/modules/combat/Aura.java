@@ -10,11 +10,10 @@ import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.projectile.FireballEntity;
 import net.minecraft.entity.projectile.ShulkerBulletEntity;
-import net.minecraft.item.*;
-import net.minecraft.network.packet.c2s.play.*;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.*;
-import thunder.hack.core.Managers;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import thunder.hack.events.impl.EventSync;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
@@ -61,6 +60,7 @@ public class Aura extends Module {
     public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", false).addToGroup(targetsGroup);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup);
 
+    // --- MIXIN SYMBOLS ---
     public float rotationYaw, rotationPitch;
     public Box resolvedBox;
     public static Entity target;
@@ -90,28 +90,23 @@ public class Aura extends Module {
             mc.player.setPitch(rots[1]);
         }
 
-        // --- FIX LỖI CANNOT FIND SYMBOL SETROTATION ---
-        // Ép xoay thông qua EventSync bằng cách gọi hàm setter nếu có, hoặc field nếu không.
-        // Trong Thunder New Gen, thường dùng event.setYaw() nhưng bro báo lỗi, nên dùng:
-        try {
-            event.yaw = rots[0];
-            event.pitch = rots[1];
-        } catch (Exception e) {
-            // Backup plan nếu field bị private
-        }
+        // --- THE ONLY POSSIBLE ROTATION FIX ---
+        // Thử dùng setter chuẩn. Nếu source bro đổi tên, bro phải check file EventSync.java
+        event.setYaw(rots[0]);
+        event.setPitch(rots[1]);
 
         if (canAttack()) {
-            // SPRINT MODE LOGIC
-            boolean shouldStopSprint = sprintMode.getValue() == SprintMode.HVH || dropSprint.getValue();
+            // SPRINT LOGIC (HVH & DROP)
+            boolean hvh = sprintMode.getValue() == SprintMode.HVH || dropSprint.getValue();
             
-            if (shouldStopSprint) {
+            if (hvh) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
             }
             
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(attackHand.getValue() == AttackHand.OffHand ? Hand.OFF_HAND : Hand.MAIN_HAND);
             
-            if (shouldStopSprint && returnSprint.getValue()) {
+            if (hvh && returnSprint.getValue()) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
             }
         }
@@ -129,6 +124,7 @@ public class Aura extends Module {
         double minDistance = attackRange.getValue() + aimRange.getValue();
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
+            
             if (e instanceof PlayerEntity && !Players.getValue()) continue;
             if (e instanceof HostileEntity && !Mobs.getValue()) continue;
             if (e instanceof SlimeEntity && !Slimes.getValue()) continue;
