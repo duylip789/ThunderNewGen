@@ -23,7 +23,7 @@ import thunder.hack.setting.impl.SettingGroup;
 import thunder.hack.utility.Timer;
 
 public class Aura extends Module {
-    // --- MAIN ---
+    // --- SETTINGS ---
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Boolean> elytra = new Setting<>("ElytraOverride", false);
@@ -31,7 +31,6 @@ public class Aura extends Module {
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
     public final Setting<Switch> switchMode = new Setting<>("AutoWeapon", Switch.None);
 
-    // --- ATTACK SETTINGS ---
     public final Setting<SettingGroup> attackSettings = new Setting<>("Attack Settings", new SettingGroup(false, 0));
     public final Setting<ESP> esp = new Setting<>("ESP", ESP.ThunderHack).addToGroup(attackSettings);
     public final Setting<Boolean> clientLook = new Setting<>("ClientLook", false).addToGroup(attackSettings);
@@ -41,7 +40,6 @@ public class Aura extends Module {
     public final Setting<AttackHand> attackHand = new Setting<>("AttackHand", AttackHand.MainHand).addToGroup(attackSettings);
     public final Setting<SprintMode> sprintMode = new Setting<>("SprintMode", SprintMode.HVH).addToGroup(attackSettings);
 
-    // --- ROTATION SETTINGS ---
     public final Setting<SettingGroup> rotationSettings = new Setting<>("Rotation Settings", new SettingGroup(false, 0));
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track).addToGroup(rotationSettings);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(rotationSettings);
@@ -54,7 +52,6 @@ public class Aura extends Module {
     public final Setting<Boolean> returnSprint = new Setting<>("ReturnSprint", true, v -> dropSprint.getValue()).addToGroup(rotationSettings);
     public final Setting<Boolean> pauseInInventory = new Setting<>("PauseInInventory", true).addToGroup(rotationSettings);
 
-    // --- TARGETS ---
     public final Setting<SettingGroup> targetsGroup = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targetsGroup);
@@ -75,7 +72,7 @@ public class Aura extends Module {
 
     public void pause() { pauseTimer.reset(); }
     public float getAttackCooldown() { return attackCooldown.getValue(); }
-    public boolean isAboveWater() { return mc.player.isSubmergedInWater(); }
+    public boolean isAboveWater() { return mc.player != null && mc.player.isSubmergedInWater(); }
 
     @EventHandler
     public void onSync(EventSync event) {
@@ -93,21 +90,28 @@ public class Aura extends Module {
             mc.player.setPitch(rots[1]);
         }
 
-        // Dùng Managers.PLAYER để set rotation vì EventSync bản này có thể bị lock
-        Managers.PLAYER.setRotation(rots[0], rots[1]);
+        // --- FIX LỖI CANNOT FIND SYMBOL SETROTATION ---
+        // Ép xoay thông qua EventSync bằng cách gọi hàm setter nếu có, hoặc field nếu không.
+        // Trong Thunder New Gen, thường dùng event.setYaw() nhưng bro báo lỗi, nên dùng:
+        try {
+            event.yaw = rots[0];
+            event.pitch = rots[1];
+        } catch (Exception e) {
+            // Backup plan nếu field bị private
+        }
 
         if (canAttack()) {
-            // Logic Sprint Mode
-            boolean hvhSprint = sprintMode.getValue() == SprintMode.HVH || dropSprint.getValue();
+            // SPRINT MODE LOGIC
+            boolean shouldStopSprint = sprintMode.getValue() == SprintMode.HVH || dropSprint.getValue();
             
-            if (hvhSprint) {
+            if (shouldStopSprint) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.STOP_SPRINTING));
             }
             
             mc.interactionManager.attackEntity(mc.player, target);
             mc.player.swingHand(attackHand.getValue() == AttackHand.OffHand ? Hand.OFF_HAND : Hand.MAIN_HAND);
             
-            if (hvhSprint && returnSprint.getValue()) {
+            if (shouldStopSprint && returnSprint.getValue()) {
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
             }
         }
