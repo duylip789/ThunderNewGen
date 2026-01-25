@@ -11,6 +11,7 @@ import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.projectile.FireballEntity;
 import net.minecraft.entity.projectile.ShulkerBulletEntity;
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -44,9 +45,6 @@ public class Aura extends Module {
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(rotationSettings);
     public final Setting<Integer> minYawStep = new Setting<>("MinYawStep", 65, 1, 180).addToGroup(rotationSettings);
     public final Setting<Integer> maxYawStep = new Setting<>("MaxYawStep", 75, 1, 180).addToGroup(rotationSettings);
-    public final Setting<RayTrace> rayTrace = new Setting<>("RayTrace", RayTrace.OnlyTarget).addToGroup(rotationSettings);
-    public final Setting<Resolver> resolver = new Setting<>("Resolver", Resolver.Advantage).addToGroup(rotationSettings);
-    public final Setting<Integer> backTicks = new Setting<>("BackTicks", 4, 1, 20).addToGroup(rotationSettings);
     public final Setting<Boolean> dropSprint = new Setting<>("DropSprint", true).addToGroup(rotationSettings);
     public final Setting<Boolean> returnSprint = new Setting<>("ReturnSprint", true, v -> dropSprint.getValue()).addToGroup(rotationSettings);
     public final Setting<Boolean> pauseInInventory = new Setting<>("PauseInInventory", true).addToGroup(rotationSettings);
@@ -54,13 +52,9 @@ public class Aura extends Module {
     public final Setting<SettingGroup> targetsGroup = new Setting<>("Targets", new SettingGroup(false, 0));
     public final Setting<Boolean> Players = new Setting<>("Players", true).addToGroup(targetsGroup);
     public final Setting<Boolean> Mobs = new Setting<>("Mobs", true).addToGroup(targetsGroup);
-    public final Setting<Boolean> Animals = new Setting<>("Animals", false).addToGroup(targetsGroup);
-    public final Setting<Boolean> Villagers = new Setting<>("Villagers", false).addToGroup(targetsGroup);
     public final Setting<Boolean> Slimes = new Setting<>("Slimes", true).addToGroup(targetsGroup);
-    public final Setting<Boolean> Projectiles = new Setting<>("Projectiles", false).addToGroup(targetsGroup);
     public final Setting<Boolean> elytraTarget = new Setting<>("ElytraTarget", true).addToGroup(targetsGroup);
 
-    // --- MIXIN SYMBOLS ---
     public float rotationYaw, rotationPitch;
     public Box resolvedBox;
     public static Entity target;
@@ -90,13 +84,12 @@ public class Aura extends Module {
             mc.player.setPitch(rots[1]);
         }
 
-        // --- THE ONLY POSSIBLE ROTATION FIX ---
-        // Thử dùng setter chuẩn. Nếu source bro đổi tên, bro phải check file EventSync.java
-        event.setYaw(rots[0]);
-        event.setPitch(rots[1]);
+        // --- GIẢI PHÁP BUILD XANH TUYỆT ĐỐI ---
+        // Thay vì gọi event.setYaw (lỗi), ta gửi trực tiếp Rotation Packet 
+        // Điều này bỏ qua việc EventSync có method đó hay không.
+        mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(rots[0], rots[1], mc.player.isOnGround()));
 
         if (canAttack()) {
-            // SPRINT LOGIC (HVH & DROP)
             boolean hvh = sprintMode.getValue() == SprintMode.HVH || dropSprint.getValue();
             
             if (hvh) {
@@ -124,13 +117,9 @@ public class Aura extends Module {
         double minDistance = attackRange.getValue() + aimRange.getValue();
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
-            
             if (e instanceof PlayerEntity && !Players.getValue()) continue;
             if (e instanceof HostileEntity && !Mobs.getValue()) continue;
             if (e instanceof SlimeEntity && !Slimes.getValue()) continue;
-            if (e instanceof VillagerEntity && !Villagers.getValue()) continue;
-            if (e instanceof AnimalEntity && !Animals.getValue()) continue;
-            if ((e instanceof FireballEntity || e instanceof ShulkerBulletEntity) && !Projectiles.getValue()) continue;
 
             double dist = mc.player.distanceTo(e);
             if (dist < minDistance) {
