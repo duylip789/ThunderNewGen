@@ -7,7 +7,7 @@ import thunder.hack.events.impl.EventMove;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
-import thunder.hack.events.EventHandler; // FIX: Bỏ '.impl' đi là chuẩn bài
+import meteordevelopment.orbit.EventHandler; // Import chuẩn của Orbit Bus thường dùng trong NewGen
 
 public class TargetStrafe extends Module {
 
@@ -16,7 +16,7 @@ public class TargetStrafe extends Module {
     public final Setting<Float> distance = new Setting<>("Distance", 3.0f, 0.1f, 4.0f);
     public final Setting<Boolean> predict = new Setting<>("Predict", true);
     
-    // Setting này để fix lỗi bên TriggerBot và Aura (đang gọi ModuleManager.targetStrafe.jump)
+    // Thêm Setting này để sửa lỗi ở Aura.java và TriggerBot.java
     public final Setting<Boolean> jump = new Setting<>("Jump", true);
 
     private LivingEntity target = null;
@@ -32,23 +32,23 @@ public class TargetStrafe extends Module {
 
     @Override
     public void onUpdate() {
-        // Kiểm tra an toàn trước khi lấy Aura
         if (fullNullCheck()) return;
 
+        // Truy cập trực tiếp qua MODULE_MANAGER viết hoa
         Aura aura = ThunderHack.MODULE_MANAGER.getModuleByClass(Aura.class);
         if (aura == null) return;
 
-        // Truy cập trực tiếp vào biến target của Aura
+        // Lấy target trực tiếp từ Aura (Aura.java: target)
         target = aura.target;
         
         if (target == null) return;
 
-        // Tự động nhảy khi ở dưới đất
+        // Tự động Jump (Logic của Exosware)
         if (jump.getValue() && mc.player.isOnGround()) {
             mc.player.jump();
         }
 
-        // Đổi hướng xoay khi gặp vật cản (vách núi, tường...)
+        // Đổi hướng xoay khi va chạm ngang (tường)
         if (mc.player.horizontalCollision) {
             direction *= -1;
         }
@@ -58,29 +58,32 @@ public class TargetStrafe extends Module {
     public void onMove(EventMove event) {
         if (target == null || fullNullCheck()) return;
 
+        // Tính toán Yaw đến mục tiêu
         float yaw = getRotationToTarget(target);
 
         if (mode.getValue() == Mode.Collision) {
-            // THUẬT TOÁN COLLISION (Bypass SMP/BOX) - Quỹ đạo tròn mềm mại
+            // THUẬT TOÁN COLLISION (Bypass SMP/Box)
+            // Sử dụng lượng giác để tạo quỹ đạo xoáy tròn mềm
             double rad = Math.toRadians(yaw + (90 * direction));
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
             
-            // Điều chỉnh góc để bám sát khoảng cách 'Distance'
+            // Điều chỉnh vector để bám sát khoảng cách yêu cầu
             double adjust = (currentDist > distance.getValue()) ? 0.45 : (currentDist < distance.getValue() - 0.2) ? -0.45 : 0;
             
             event.setX(Math.cos(rad + adjust) * speed.getValue());
             event.setZ(Math.sin(rad + adjust) * speed.getValue());
         } else {
-            // THUẬT TOÁN PLUS (Bypass Practice) - Vector kéo nam châm cực mạnh
+            // THUẬT TOÁN PLUS (Bypass Practice - Exosware Logic)
+            // Sử dụng Vector nam châm để ép quỹ đạo tròn hoàn hảo
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
 
-            if (dist == 0) return; // Tránh lỗi chia cho 0
+            if (dist <= 0) return;
 
-            // Công thức vector từ Exosware giúp bypass chuyển động
+            // Vector Pull: Kết hợp lực hướng tâm và vận tốc tiếp tuyến
             double motionX = (diffX / dist) * (dist - distance.getValue()) + (diffZ / dist) * speed.getValue() * direction;
             double motionZ = (diffZ / dist) * (dist - distance.getValue()) - (diffX / dist) * speed.getValue() * direction;
 
@@ -94,7 +97,7 @@ public class TargetStrafe extends Module {
         double z = target.getZ() - mc.player.getZ();
         
         if (predict.getValue()) {
-            // Predict vị trí dựa trên vận tốc hiện tại của đối thủ
+            // Prediction bypass (nhân hệ số 2.5 để bù trừ ping)
             x += (target.getX() - target.prevX) * 2.5;
             z += (target.getZ() - target.prevZ) * 2.5;
         }
