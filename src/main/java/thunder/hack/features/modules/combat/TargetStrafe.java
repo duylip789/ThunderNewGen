@@ -5,12 +5,11 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import thunder.hack.ThunderHack;
 import thunder.hack.events.impl.EventMove;
-import thunder.hack.events.impl.PlayerUpdateEvent;
 import thunder.hack.features.modules.Module;
+import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
-import thunder.hack.utility.math.MathUtil;
+import thunder.hack.events.impl.EventHandler; // Dùng cái này thay cho SubscribeEvent
 
-@Mixin // Lưu ý: Bro nhớ đăng ký module này trong ModuleManager
 public class TargetStrafe extends Module {
 
     private final Setting<Mode> mode = new Setting<>("Mode", Mode.Collision);
@@ -31,40 +30,50 @@ public class TargetStrafe extends Module {
 
     @Override
     public void onUpdate() {
-        // Tìm mục tiêu từ Aura
+        // Lấy target từ Aura của ThunderHack
         target = ThunderHack.moduleManager.getModuleByClass(Aura.class).getTarget();
         
         if (fullNullCheck() || target == null) return;
 
-        // Tự động nhảy khi ở gần mục tiêu
+        // Tự động nhảy (Tăng tốc độ cho strafe)
         if (mc.player.isOnGround()) {
             mc.player.jump();
         }
 
-        // Đổi hướng nếu va chạm tường
+        // Đổi hướng khi đập mặt vào tường
         if (mc.player.horizontalCollision) {
             direction *= -1;
         }
     }
 
-    @SubscribeEvent
+    @EventHandler
     public void onMove(EventMove event) {
-        if (target == null) return;
+        if (target == null || fullNullCheck()) return;
 
-        // Thuật toán tính toán Yaw cần thiết để xoay quanh mục tiêu
         float yaw = getRotationToTarget(target);
 
         if (mode.getValue() == Mode.Collision) {
-            // THUẬT TOÁN COLLISION (Bypass SMP/Box)
-            // Sử dụng tính toán quỹ đạo lướt để tránh bị phát hiện "Force Motion"
-            doStrafe(event, speed.getValue(), yaw);
+            // THUẬT TOÁN COLLISION (SMP/BOX BYPASS)
+            // Tính toán hướng lượn dựa trên vòng cung lượng giác
+            double rad = Math.toRadians(yaw + (90 * direction));
+            
+            double diffX = target.getX() - mc.player.getX();
+            double diffZ = target.getZ() - mc.player.getZ();
+            double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
+            
+            // Điều chỉnh góc để luôn giữ khoảng cách Distance
+            double adjust = (currentDist > distance.getValue()) ? 0.4 : (currentDist < distance.getValue() - 0.3) ? -0.4 : 0;
+            
+            event.setX(Math.cos(rad + adjust) * speed.getValue());
+            event.setZ(Math.sin(rad + adjust) * speed.getValue());
         } else {
-            // THUẬT TOÁN PLUS (Bypass Practice)
-            // Ép vector vận tốc trực tiếp dựa trên lực kéo tâm
+            // THUẬT TOÁN PLUS (PRACTICE BYPASS)
+            // Sử dụng Vector kéo tâm nam châm (Magnet Pull)
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
 
+            // Công thức Vector lướt của Exosware
             double motionX = (diffX / dist) * (dist - distance.getValue()) + (diffZ / dist) * speed.getValue() * direction;
             double motionZ = (diffZ / dist) * (dist - distance.getValue()) - (diffX / dist) * speed.getValue() * direction;
 
@@ -73,32 +82,14 @@ public class TargetStrafe extends Module {
         }
     }
 
-    private void doStrafe(EventMove event, float moveSpeed, float yaw) {
-        // Thuật toán lượng giác để tính toán vị trí di chuyển tối ưu
-        double rad = Math.toRadians(yaw + (90 * direction));
-        
-        // Điều chỉnh dần khoảng cách để tạo đường cong mềm mại (Tránh bị check Heuristic)
-        double diffX = target.getX() - mc.player.getX();
-        double diffZ = target.getZ() - mc.player.getZ();
-        double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
-        
-        double dir = (currentDist > distance.getValue()) ? 0.5 : (currentDist < distance.getValue() - 0.2) ? -0.5 : 0;
-        
-        double x = Math.cos(rad + dir) * moveSpeed;
-        double z = Math.sin(rad + dir) * moveSpeed;
-
-        event.setX(x);
-        event.setZ(z);
-    }
-
     private float getRotationToTarget(LivingEntity target) {
         double x = target.getX() - mc.player.getX();
         double z = target.getZ() - mc.player.getZ();
         
-        // Prediction logic (Dự đoán vị trí tiếp theo của đối thủ)
         if (predict.getValue()) {
-            x += target.getX() - target.prevX;
-            z += target.getZ() - target.prevZ;
+            // Dự đoán vị trí dựa trên chuyển động thực tế
+            x += (target.getX() - target.prevX) * 2.0;
+            z += (target.getZ() - target.prevZ) * 2.0;
         }
         
         return (float) (MathHelper.atan2(z, x) * (180 / Math.PI) - 90);
