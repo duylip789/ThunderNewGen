@@ -52,7 +52,6 @@ public class ModuleManager implements IManager {
     public static AntiServerAdd antiServerAdd = new AntiServerAdd();
     public static TridentBoost tridentBoost = new TridentBoost();
     public static FixHP fixHP = new FixHP();
-    public static TargetESP targetESP = new TargetESP();
     public static FakeLag fakeLag = new FakeLag();
     public static Trajectories trajectories = new Trajectories();
     public static TargetStrafe targetStrafe = new TargetStrafe();
