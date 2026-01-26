@@ -82,22 +82,12 @@ public abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity
     @Inject(method = "sendMovementPackets", at = @At("HEAD"), cancellable = true)
     private void sendMovementPacketsHook(CallbackInfo info) {
         if (fullNullCheck()) return;
-
-        // FIX: Đảm bảo lấy giá trị chuẩn từ Player để tránh bị khóa 0,0
-        float currentYaw = mc.player.getYaw();
-        float currentPitch = mc.player.getPitch();
-
-        EventSync event = new EventSync(currentYaw, currentPitch);
+        EventSync event = new EventSync(getYaw(), getPitch());
         ThunderHack.EVENT_BUS.post(event);
-        
-        // Cập nhật lại Yaw/Pitch sau khi Event xử lý (nếu có rotation từ Aura/Scaffold)
-        // Nếu không có module nào can thiệp, nó sẽ giữ nguyên yaw/pitch của chuột
         postAction = event.getPostAction();
-
         EventSprint e = new EventSprint(isSprinting());
         ThunderHack.EVENT_BUS.post(e);
         ThunderHack.EVENT_BUS.post(new EventAfterRotate());
-
         if (e.getSprintState() != mc.player.lastSprinting) {
             if (e.getSprintState())
                 mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(this, ClientCommandC2SPacket.Mode.START_SPRINTING));
@@ -109,11 +99,7 @@ public abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity
         pre_sprint_state = mc.player.lastSprinting;
         Core.lockSprint = true;
 
-        // Cẩn thận: Nếu Event bị cancel mà không rõ lý do, nó sẽ khóa xoay. 
-        // Mình thêm check để tránh cancel bậy.
-        if (event.isCancelled() && (event.getYaw() != currentYaw || event.getPitch() != currentPitch)) {
-            info.cancel();
-        }
+        if (event.isCancelled()) info.cancel();
     }
 
     @Inject(method = "sendMovementPackets", at = @At("RETURN"), cancellable = true)
@@ -127,28 +113,28 @@ public abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity
             postAction.run();
             postAction = null;
         }
+        if (event.isCancelled())
+            info.cancel();
     }
 
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;sendMovementPackets()V", ordinal = 0, shift = At.Shift.AFTER), cancellable = true)
     private void PostUpdateHook(CallbackInfo info) {
         if(Module.fullNullCheck()) return;
-        if (updateLock) return;
-
+        if (updateLock) {
+            return;
+        }
         PostPlayerUpdateEvent playerUpdateEvent = new PostPlayerUpdateEvent();
         ThunderHack.EVENT_BUS.post(playerUpdateEvent);
-        
         if (playerUpdateEvent.isCancelled()) {
-            // Giới hạn Iterations để tránh treo máy/khóa chuột
-            int iterations = Math.min(playerUpdateEvent.getIterations(), 10);
-            if (iterations > 0) {
-                for (int i = 0; i < iterations; i++) {
+            info.cancel();
+            if (playerUpdateEvent.getIterations() > 0) {
+                for (int i = 0; i < playerUpdateEvent.getIterations(); i++) {
                     updateLock = true;
                     tick();
                     updateLock = false;
                     sendMovementPackets();
                 }
             }
-            info.cancel();
         }
     }
 
@@ -157,5 +143,11 @@ public abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity
         if (ModuleManager.noPush.isEnabled() && ModuleManager.noPush.blocks.getValue()) {
             info.cancel();
         }
+    }
+
+    @Inject(method = "tickNausea", at = @At("HEAD"), cancellable = true)
+    private void updateNauseaHook(CallbackInfo ci) {
+        if(ModuleManager.portalInventory.isEnabled())
+            ci.cancel();
     }
 }
