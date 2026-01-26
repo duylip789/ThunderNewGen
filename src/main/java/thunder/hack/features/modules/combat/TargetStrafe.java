@@ -3,10 +3,9 @@ package thunder.hack.features.modules.combat;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.MathHelper;
-import thunder.hack.ThunderHack;
+import thunder.hack.core.manager.client.ModuleManager; // Import Manager chuẩn
 import thunder.hack.events.impl.EventMove;
 import thunder.hack.features.modules.Module;
-import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
 import meteordevelopment.orbit.EventHandler;
 
@@ -17,7 +16,7 @@ public class TargetStrafe extends Module {
     public final Setting<Float> distance = new Setting<>("Distance", 3.0f, 0.1f, 4.0f);
     public final Setting<Boolean> predict = new Setting<>("Predict", true);
     
-    // Setting này để fix lỗi bên TriggerBot và Aura
+    // Giữ setting này để cứu Aura.java và TriggerBot.java
     public final Setting<Boolean> jump = new Setting<>("Jump", true);
 
     private LivingEntity target = null;
@@ -35,12 +34,12 @@ public class TargetStrafe extends Module {
     public void onUpdate() {
         if (fullNullCheck()) return;
 
-        // FIX: moduleManager viết thường theo chuẩn 1.21 NewGen
-        Aura aura = ThunderHack.moduleManager.getModuleByClass(Aura.class);
-        if (aura == null) return;
+        // FIX: Gọi trực tiếp từ ModuleManager theo cách file MixinEntity đang dùng
+        if (ModuleManager.aura == null) return;
 
-        // FIX: Ép kiểu từ Entity sang LivingEntity an toàn
-        Entity auraTarget = aura.target;
+        Entity auraTarget = ModuleManager.aura.target;
+        
+        // Kiểm tra và ép kiểu an toàn cho 1.21
         if (auraTarget instanceof LivingEntity) {
             target = (LivingEntity) auraTarget;
         } else {
@@ -65,7 +64,7 @@ public class TargetStrafe extends Module {
         float yaw = getRotationToTarget(target);
 
         if (mode.getValue() == Mode.Collision) {
-            // THUẬT TOÁN COLLISION - Lượn vòng cung mềm
+            // THUẬT TOÁN COLLISION (SMP/BOX BYPASS)
             double rad = Math.toRadians(yaw + (90 * direction));
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
@@ -76,7 +75,7 @@ public class TargetStrafe extends Module {
             event.setX(Math.cos(rad + adjust) * speed.getValue());
             event.setZ(Math.sin(rad + adjust) * speed.getValue());
         } else {
-            // THUẬT TOÁN PLUS - Vector Pull (Exosware Logic)
+            // THUẬT TOÁN PLUS (PRACTICE BYPASS) - Thuật toán Vector Pull
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
@@ -96,7 +95,6 @@ public class TargetStrafe extends Module {
         double z = target.getZ() - mc.player.getZ();
         
         if (predict.getValue()) {
-            // Predict 1.21: Sử dụng Delta Movement để bù trễ
             x += (target.getX() - target.prevX) * 2.5;
             z += (target.getZ() - target.prevZ) * 2.5;
         }
