@@ -15,7 +15,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 import thunder.hack.ThunderHack;
 import thunder.hack.core.manager.client.ModuleManager;
 import thunder.hack.events.impl.EventFixVelocity;
@@ -39,6 +38,9 @@ public abstract class MixinEntity implements IEntity {
     @Shadow
     private Box boundingBox;
 
+    @Unique
+    public List<Trails.Trail> trails = new ArrayList<>();
+
     @Override
     public List<Trails.Trail> getTrails() {
         return trails;
@@ -49,13 +51,8 @@ public abstract class MixinEntity implements IEntity {
         return getVelocityAffectingPos();
     }
 
-    @Unique
-    public List<Trails.Trail> trails = new ArrayList<>();
-
     @ModifyArgs(method = "pushAwayFrom", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;addVelocity(DDD)V"))
     public void pushAwayFromHook(Args args) {
-
-        //Condition '...' is always 'false' is a lie!!! do not delete
         if ((Object) this == mc.player && ModuleManager.noPush.isEnabled() && ModuleManager.noPush.players.getValue()) {
             args.set(0, 0.);
             args.set(1, 0.);
@@ -65,7 +62,7 @@ public abstract class MixinEntity implements IEntity {
 
     @Inject(method = "updateVelocity", at = {@At("HEAD")}, cancellable = true)
     public void updateVelocityHook(float speed, Vec3d movementInput, CallbackInfo ci) {
-        if(Module.fullNullCheck()) return;
+        if (Module.fullNullCheck()) return;
         if ((Object) this == mc.player) {
             ci.cancel();
             EventFixVelocity event = new EventFixVelocity(movementInput, speed, mc.player.getYaw(), movementInputToVelocityC(movementInput, speed, mc.player.getYaw()));
@@ -77,9 +74,7 @@ public abstract class MixinEntity implements IEntity {
     @Unique
     private static Vec3d movementInputToVelocityC(Vec3d movementInput, float speed, float yaw) {
         double d = movementInput.lengthSquared();
-        if (d < 1.0E-7) {
-            return Vec3d.ZERO;
-        }
+        if (d < 1.0E-7) return Vec3d.ZERO;
         Vec3d vec3d = (d > 1.0 ? movementInput.normalize() : movementInput).multiply(speed);
         float f = MathHelper.sin(yaw * ((float) Math.PI / 180));
         float g = MathHelper.cos(yaw * ((float) Math.PI / 180));
@@ -88,16 +83,15 @@ public abstract class MixinEntity implements IEntity {
 
     @Inject(method = "getBoundingBox", at = {@At("HEAD")}, cancellable = true)
     public final void getBoundingBox(CallbackInfoReturnable<Box> cir) {
-        if (ModuleManager.hitBox.isEnabled() && mc != null && mc.player != null && ((Entity) (Object) this).getId() != mc.player.getId() && (ModuleManager.aura.isDisabled() || HitBox.affectToAura.getValue())) {
+        if (ModuleManager.hitBox.isEnabled() && mc.player != null && ((Entity) (Object) this).getId() != mc.player.getId() && (ModuleManager.aura.isDisabled() || HitBox.affectToAura.getValue())) {
             cir.setReturnValue(new Box(this.boundingBox.minX - HitBox.XZExpand.getValue() / 2f, this.boundingBox.minY - HitBox.YExpand.getValue() / 2f, this.boundingBox.minZ - HitBox.XZExpand.getValue() / 2f, this.boundingBox.maxX + HitBox.XZExpand.getValue() / 2f, this.boundingBox.maxY + HitBox.YExpand.getValue() / 2f, this.boundingBox.maxZ + HitBox.XZExpand.getValue() / 2f));
         }
     }
 
     @Inject(method = "isGlowing", at = @At("HEAD"), cancellable = true)
     public void isGlowingHook(CallbackInfoReturnable<Boolean> cir) {
-        Shaders shaders = ModuleManager.shaders;
-        if (shaders.isEnabled()) {
-            cir.setReturnValue(shaders.shouldRender((Entity) (Object) this));
+        if (ModuleManager.shaders.isEnabled()) {
+            cir.setReturnValue(ModuleManager.shaders.shouldRender((Entity) (Object) this));
         }
     }
 
@@ -108,13 +102,5 @@ public abstract class MixinEntity implements IEntity {
         }
     }
 
-    @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 0, argsOnly = true)
-    private double changeLookDirectionHook0(double value) {
-            return 0d;
-    }
-
-    @ModifyVariable(method = "changeLookDirection", at = @At("HEAD"), ordinal = 1, argsOnly = true)
-    private double changeLookDirectionHook1(double value) {
-            return 0d;
-    }
+    // --- ĐÃ XÓA PHẦN CHANGE LOOK DIRECTION GÂY LỖI ---
 }
