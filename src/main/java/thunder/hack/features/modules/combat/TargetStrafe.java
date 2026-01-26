@@ -7,7 +7,7 @@ import thunder.hack.events.impl.EventMove;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
-import thunder.hack.events.impl.EventHandler;
+import thunder.hack.events.EventHandler; // FIX: Bỏ '.impl' đi là chuẩn bài
 
 public class TargetStrafe extends Module {
 
@@ -16,14 +16,13 @@ public class TargetStrafe extends Module {
     public final Setting<Float> distance = new Setting<>("Distance", 3.0f, 0.1f, 4.0f);
     public final Setting<Boolean> predict = new Setting<>("Predict", true);
     
-    // Setting này cực kỳ quan trọng để fix lỗi bên TriggerBot và Aura
+    // Setting này để fix lỗi bên TriggerBot và Aura (đang gọi ModuleManager.targetStrafe.jump)
     public final Setting<Boolean> jump = new Setting<>("Jump", true);
 
     private LivingEntity target = null;
     private int direction = 1;
 
     public TargetStrafe() {
-        // Fix lỗi constructor: Chỉ truyền Name và Category
         super("TargetStrafe", Category.COMBAT);
     }
 
@@ -33,19 +32,23 @@ public class TargetStrafe extends Module {
 
     @Override
     public void onUpdate() {
-        // Fix lỗi gọi MODULE_MANAGER
+        // Kiểm tra an toàn trước khi lấy Aura
+        if (fullNullCheck()) return;
+
         Aura aura = ThunderHack.MODULE_MANAGER.getModuleByClass(Aura.class);
-        
-        // Fix lỗi lấy target: Truy cập trực tiếp vào biến target của Aura
+        if (aura == null) return;
+
+        // Truy cập trực tiếp vào biến target của Aura
         target = aura.target;
         
-        if (fullNullCheck() || target == null) return;
+        if (target == null) return;
 
-        // Tự động nhảy nếu bật setting Jump
+        // Tự động nhảy khi ở dưới đất
         if (jump.getValue() && mc.player.isOnGround()) {
             mc.player.jump();
         }
 
+        // Đổi hướng xoay khi gặp vật cản (vách núi, tường...)
         if (mc.player.horizontalCollision) {
             direction *= -1;
         }
@@ -58,22 +61,26 @@ public class TargetStrafe extends Module {
         float yaw = getRotationToTarget(target);
 
         if (mode.getValue() == Mode.Collision) {
-            // THUẬT TOÁN COLLISION (SMP/BOX BYPASS)
+            // THUẬT TOÁN COLLISION (Bypass SMP/BOX) - Quỹ đạo tròn mềm mại
             double rad = Math.toRadians(yaw + (90 * direction));
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
             
+            // Điều chỉnh góc để bám sát khoảng cách 'Distance'
             double adjust = (currentDist > distance.getValue()) ? 0.45 : (currentDist < distance.getValue() - 0.2) ? -0.45 : 0;
             
             event.setX(Math.cos(rad + adjust) * speed.getValue());
             event.setZ(Math.sin(rad + adjust) * speed.getValue());
         } else {
-            // THUẬT TOÁN PLUS (PRACTICE BYPASS)
+            // THUẬT TOÁN PLUS (Bypass Practice) - Vector kéo nam châm cực mạnh
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
 
+            if (dist == 0) return; // Tránh lỗi chia cho 0
+
+            // Công thức vector từ Exosware giúp bypass chuyển động
             double motionX = (diffX / dist) * (dist - distance.getValue()) + (diffZ / dist) * speed.getValue() * direction;
             double motionZ = (diffZ / dist) * (dist - distance.getValue()) - (diffX / dist) * speed.getValue() * direction;
 
@@ -87,6 +94,7 @@ public class TargetStrafe extends Module {
         double z = target.getZ() - mc.player.getZ();
         
         if (predict.getValue()) {
+            // Predict vị trí dựa trên vận tốc hiện tại của đối thủ
             x += (target.getX() - target.prevX) * 2.5;
             z += (target.getZ() - target.prevZ) * 2.5;
         }
