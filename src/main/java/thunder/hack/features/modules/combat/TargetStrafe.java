@@ -2,13 +2,12 @@ package thunder.hack.features.modules.combat;
 
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 import thunder.hack.ThunderHack;
 import thunder.hack.events.impl.EventMove;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
-import thunder.hack.events.impl.EventHandler; // Dùng cái này thay cho SubscribeEvent
+import meteordevelopment.orbit.EventHandler; // Đây là đường dẫn chuẩn cho hầu hết bản Recode
 
 public class TargetStrafe extends Module {
 
@@ -21,7 +20,7 @@ public class TargetStrafe extends Module {
     private int direction = 1;
 
     public TargetStrafe() {
-        super("TargetStrafe", Category.COMBAT);
+        super("TargetStrafe", "Xoay quanh mục tiêu để bypass", Category.COMBAT);
     }
 
     public enum Mode {
@@ -30,17 +29,18 @@ public class TargetStrafe extends Module {
 
     @Override
     public void onUpdate() {
-        // Lấy target từ Aura của ThunderHack
-        target = ThunderHack.moduleManager.getModuleByClass(Aura.class).getTarget();
+        // Tìm target từ module Aura
+        Aura aura = ThunderHack.moduleManager.getModuleByClass(Aura.class);
+        target = aura.getTarget();
         
         if (fullNullCheck() || target == null) return;
 
-        // Tự động nhảy (Tăng tốc độ cho strafe)
+        // Tự động nhảy để duy trì vận tốc (AirStrafe logic)
         if (mc.player.isOnGround()) {
             mc.player.jump();
         }
 
-        // Đổi hướng khi đập mặt vào tường
+        // Đổi hướng xoay khi gặp vật cản
         if (mc.player.horizontalCollision) {
             direction *= -1;
         }
@@ -50,30 +50,30 @@ public class TargetStrafe extends Module {
     public void onMove(EventMove event) {
         if (target == null || fullNullCheck()) return;
 
+        // Tính toán góc xoay dựa trên vị trí mục tiêu
         float yaw = getRotationToTarget(target);
 
         if (mode.getValue() == Mode.Collision) {
-            // THUẬT TOÁN COLLISION (SMP/BOX BYPASS)
-            // Tính toán hướng lượn dựa trên vòng cung lượng giác
+            // THUẬT TOÁN COLLISION - Bypass các server như SMP, Box
+            // Sử dụng chuyển động xoáy vòng cung mượt
             double rad = Math.toRadians(yaw + (90 * direction));
             
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
             
-            // Điều chỉnh góc để luôn giữ khoảng cách Distance
-            double adjust = (currentDist > distance.getValue()) ? 0.4 : (currentDist < distance.getValue() - 0.3) ? -0.4 : 0;
+            // Điều chỉnh vector hướng để duy trì khoảng cách Distance đã cài đặt
+            double adjust = (currentDist > distance.getValue()) ? 0.45 : (currentDist < distance.getValue() - 0.2) ? -0.45 : 0;
             
             event.setX(Math.cos(rad + adjust) * speed.getValue());
             event.setZ(Math.sin(rad + adjust) * speed.getValue());
         } else {
-            // THUẬT TOÁN PLUS (PRACTICE BYPASS)
-            // Sử dụng Vector kéo tâm nam châm (Magnet Pull)
+            // THUẬT TOÁN PLUS - Bypass Practice (Sử dụng Magnet Vector)
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
 
-            // Công thức Vector lướt của Exosware
+            // Vector toán học ép quỹ đạo tròn hoàn hảo (Exosware logic)
             double motionX = (diffX / dist) * (dist - distance.getValue()) + (diffZ / dist) * speed.getValue() * direction;
             double motionZ = (diffZ / dist) * (dist - distance.getValue()) - (diffX / dist) * speed.getValue() * direction;
 
@@ -87,9 +87,9 @@ public class TargetStrafe extends Module {
         double z = target.getZ() - mc.player.getZ();
         
         if (predict.getValue()) {
-            // Dự đoán vị trí dựa trên chuyển động thực tế
-            x += (target.getX() - target.prevX) * 2.0;
-            z += (target.getZ() - target.prevZ) * 2.0;
+            // Predict vị trí dựa trên DeltaMovement để tránh bị trễ packet
+            x += (target.getX() - target.prevX) * 2.5;
+            z += (target.getZ() - target.prevZ) * 2.5;
         }
         
         return (float) (MathHelper.atan2(z, x) * (180 / Math.PI) - 90);
