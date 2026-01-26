@@ -76,13 +76,10 @@ public class ClickGui extends Module {
     }
 
     public enum colorModeEn {
-        Static,
-        Sky,
-        LightRainbow,
-        Rainbow,
         Fade,
         DoubleColor,
-        Analogous
+        Analogous,
+        Frosbut
     }
 
     public enum scrollModeEn {
