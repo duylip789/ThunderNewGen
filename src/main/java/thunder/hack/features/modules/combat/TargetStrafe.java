@@ -1,106 +1,106 @@
 package thunder.hack.features.modules.combat;
 
-import meteordevelopment.orbit.EventHandler;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
-import net.minecraft.util.math.BlockPos;
-import thunder.hack.core.manager.client.ModuleManager;
-import thunder.hack.events.impl.*;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+import thunder.hack.ThunderHack;
+import thunder.hack.events.impl.EventMove;
+import thunder.hack.events.impl.PlayerUpdateEvent;
 import thunder.hack.features.modules.Module;
 import thunder.hack.setting.Setting;
+import thunder.hack.utility.math.MathUtil;
 
+@Mixin // Lưu ý: Bro nhớ đăng ký module này trong ModuleManager
 public class TargetStrafe extends Module {
-    // Để public để Aura và TriggerBot không bị lỗi
-    public final Setting<Mode> mode = new Setting<>("Mode", Mode.Collision);
-    public final Setting<Float> speed = new Setting<>("Speed", 0.08f, 0.0f, 1.0f);
-    public final Setting<Float> distance = new Setting<>("Distance", 2.0f, 0.1f, 5.0f);
-    public final Setting<Boolean> jump = new Setting<>("Jump", true); 
 
-    public static boolean switchDir = true;
-    private static TargetStrafe instance;
+    private final Setting<Mode> mode = new Setting<>("Mode", Mode.Collision);
+    private final Setting<Float> speed = new Setting<>("Speed", 0.23f, 0.1f, 1.0f);
+    private final Setting<Float> distance = new Setting<>("Distance", 3.0f, 0.1f, 4.0f);
+    private final Setting<Boolean> predict = new Setting<>("Predict", true);
+
+    private LivingEntity target = null;
+    private int direction = 1;
 
     public TargetStrafe() {
         super("TargetStrafe", Category.COMBAT);
-        instance = this;
     }
 
-    public static TargetStrafe getInstance() {
-        return instance;
+    public enum Mode {
+        Collision, Plus
     }
 
     @Override
-    public void onEnable() {
-        switchDir = true;
-    }
+    public void onUpdate() {
+        // Tìm mục tiêu từ Aura
+        target = ThunderHack.moduleManager.getModuleByClass(Aura.class).getTarget();
+        
+        if (fullNullCheck() || target == null) return;
 
-    public boolean canStrafe() {
-        if (mc.player.isSneaking() || mc.player.isInLava() || mc.player.isSubmergedInWater()) return false;
-        if (ModuleManager.speed.isEnabled()) return false;
-        return Aura.target != null && ModuleManager.aura.isEnabled();
-    }
-
-    public boolean needToSwitch(double x, double z) {
-        if (mc.player.horizontalCollision) return true;
-        BlockPos checkPos = new BlockPos((int)x, (int)mc.player.getY() - 1, (int)z);
-        if (mc.world.isAir(checkPos) || mc.world.getBlockState(checkPos).getBlock() == Blocks.LAVA) {
-            return true;
-        }
-        return false;
-    }
-
-    @EventHandler
-    public void onMove(EventMove event) {
-        if (canStrafe()) {
-            double currentSpeed = speed.getValue();
-            if (mc.player.hasStatusEffect(StatusEffects.SPEED)) {
-                currentSpeed *= 1.3; 
-            }
-
-            double targetX = Aura.target.getX();
-            double targetZ = Aura.target.getZ();
-            double currentYaw = Math.atan2(mc.player.getZ() - targetZ, mc.player.getX() - targetX);
-            double offset = currentSpeed / Math.max(distance.getValue(), mc.player.distanceTo(Aura.target));
-            
-            double checkYaw = currentYaw + (switchDir ? offset : -offset);
-            double nextX = targetX + Math.cos(checkYaw) * distance.getValue();
-            double nextZ = targetZ + Math.sin(checkYaw) * distance.getValue();
-
-            if (needToSwitch(nextX, nextZ)) {
-                switchDir = !switchDir;
-                checkYaw = currentYaw + (switchDir ? offset : -offset);
-            }
-
-            double destX = targetX + Math.cos(checkYaw) * distance.getValue();
-            double destZ = targetZ + Math.sin(checkYaw) * distance.getValue();
-            double diffX = destX - mc.player.getX();
-            double diffZ = destZ - mc.player.getZ();
-            double dist = Math.hypot(diffX, diffZ);
-
-            if (dist > 0) {
-                event.setX((diffX / dist) * currentSpeed);
-                event.setZ((diffZ / dist) * currentSpeed);
-            }
-            event.cancel();
-        }
-    }
-
-    @EventHandler
-    public void updateValues(EventSync e) {
-        if (canStrafe() && mc.player.isOnGround() && jump.getValue()) {
+        // Tự động nhảy khi ở gần mục tiêu
+        if (mc.player.isOnGround()) {
             mc.player.jump();
         }
-    }
 
-    @EventHandler
-    public void onPacketReceive(PacketEvent.Receive e) {
-        if (e.getPacket() instanceof PlayerPositionLookS2CPacket) {
-            // Reset logic if needed
+        // Đổi hướng nếu va chạm tường
+        if (mc.player.horizontalCollision) {
+            direction *= -1;
         }
     }
 
-    private enum Mode {
-        Collision
+    @SubscribeEvent
+    public void onMove(EventMove event) {
+        if (target == null) return;
+
+        // Thuật toán tính toán Yaw cần thiết để xoay quanh mục tiêu
+        float yaw = getRotationToTarget(target);
+
+        if (mode.getValue() == Mode.Collision) {
+            // THUẬT TOÁN COLLISION (Bypass SMP/Box)
+            // Sử dụng tính toán quỹ đạo lướt để tránh bị phát hiện "Force Motion"
+            doStrafe(event, speed.getValue(), yaw);
+        } else {
+            // THUẬT TOÁN PLUS (Bypass Practice)
+            // Ép vector vận tốc trực tiếp dựa trên lực kéo tâm
+            double diffX = target.getX() - mc.player.getX();
+            double diffZ = target.getZ() - mc.player.getZ();
+            double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
+
+            double motionX = (diffX / dist) * (dist - distance.getValue()) + (diffZ / dist) * speed.getValue() * direction;
+            double motionZ = (diffZ / dist) * (dist - distance.getValue()) - (diffX / dist) * speed.getValue() * direction;
+
+            event.setX(motionX);
+            event.setZ(motionZ);
+        }
+    }
+
+    private void doStrafe(EventMove event, float moveSpeed, float yaw) {
+        // Thuật toán lượng giác để tính toán vị trí di chuyển tối ưu
+        double rad = Math.toRadians(yaw + (90 * direction));
+        
+        // Điều chỉnh dần khoảng cách để tạo đường cong mềm mại (Tránh bị check Heuristic)
+        double diffX = target.getX() - mc.player.getX();
+        double diffZ = target.getZ() - mc.player.getZ();
+        double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
+        
+        double dir = (currentDist > distance.getValue()) ? 0.5 : (currentDist < distance.getValue() - 0.2) ? -0.5 : 0;
+        
+        double x = Math.cos(rad + dir) * moveSpeed;
+        double z = Math.sin(rad + dir) * moveSpeed;
+
+        event.setX(x);
+        event.setZ(z);
+    }
+
+    private float getRotationToTarget(LivingEntity target) {
+        double x = target.getX() - mc.player.getX();
+        double z = target.getZ() - mc.player.getZ();
+        
+        // Prediction logic (Dự đoán vị trí tiếp theo của đối thủ)
+        if (predict.getValue()) {
+            x += target.getX() - target.prevX;
+            z += target.getZ() - target.prevZ;
+        }
+        
+        return (float) (MathHelper.atan2(z, x) * (180 / Math.PI) - 90);
     }
 }
-
