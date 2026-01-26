@@ -7,20 +7,24 @@ import thunder.hack.events.impl.EventMove;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.Aura;
 import thunder.hack.setting.Setting;
-import meteordevelopment.orbit.EventHandler; // Đây là đường dẫn chuẩn cho hầu hết bản Recode
+import thunder.hack.events.impl.EventHandler;
 
 public class TargetStrafe extends Module {
 
     private final Setting<Mode> mode = new Setting<>("Mode", Mode.Collision);
-    private final Setting<Float> speed = new Setting<>("Speed", 0.23f, 0.1f, 1.0f);
-    private final Setting<Float> distance = new Setting<>("Distance", 3.0f, 0.1f, 4.0f);
-    private final Setting<Boolean> predict = new Setting<>("Predict", true);
+    public final Setting<Float> speed = new Setting<>("Speed", 0.23f, 0.1f, 1.0f);
+    public final Setting<Float> distance = new Setting<>("Distance", 3.0f, 0.1f, 4.0f);
+    public final Setting<Boolean> predict = new Setting<>("Predict", true);
+    
+    // Setting này cực kỳ quan trọng để fix lỗi bên TriggerBot và Aura
+    public final Setting<Boolean> jump = new Setting<>("Jump", true);
 
     private LivingEntity target = null;
     private int direction = 1;
 
     public TargetStrafe() {
-        super("TargetStrafe", "Xoay quanh mục tiêu để bypass", Category.COMBAT);
+        // Fix lỗi constructor: Chỉ truyền Name và Category
+        super("TargetStrafe", Category.COMBAT);
     }
 
     public enum Mode {
@@ -29,18 +33,19 @@ public class TargetStrafe extends Module {
 
     @Override
     public void onUpdate() {
-        // Tìm target từ module Aura
-        Aura aura = ThunderHack.moduleManager.getModuleByClass(Aura.class);
-        target = aura.getTarget();
+        // Fix lỗi gọi MODULE_MANAGER
+        Aura aura = ThunderHack.MODULE_MANAGER.getModuleByClass(Aura.class);
+        
+        // Fix lỗi lấy target: Truy cập trực tiếp vào biến target của Aura
+        target = aura.target;
         
         if (fullNullCheck() || target == null) return;
 
-        // Tự động nhảy để duy trì vận tốc (AirStrafe logic)
-        if (mc.player.isOnGround()) {
+        // Tự động nhảy nếu bật setting Jump
+        if (jump.getValue() && mc.player.isOnGround()) {
             mc.player.jump();
         }
 
-        // Đổi hướng xoay khi gặp vật cản
         if (mc.player.horizontalCollision) {
             direction *= -1;
         }
@@ -50,30 +55,25 @@ public class TargetStrafe extends Module {
     public void onMove(EventMove event) {
         if (target == null || fullNullCheck()) return;
 
-        // Tính toán góc xoay dựa trên vị trí mục tiêu
         float yaw = getRotationToTarget(target);
 
         if (mode.getValue() == Mode.Collision) {
-            // THUẬT TOÁN COLLISION - Bypass các server như SMP, Box
-            // Sử dụng chuyển động xoáy vòng cung mượt
+            // THUẬT TOÁN COLLISION (SMP/BOX BYPASS)
             double rad = Math.toRadians(yaw + (90 * direction));
-            
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double currentDist = Math.sqrt(diffX * diffX + diffZ * diffZ);
             
-            // Điều chỉnh vector hướng để duy trì khoảng cách Distance đã cài đặt
             double adjust = (currentDist > distance.getValue()) ? 0.45 : (currentDist < distance.getValue() - 0.2) ? -0.45 : 0;
             
             event.setX(Math.cos(rad + adjust) * speed.getValue());
             event.setZ(Math.sin(rad + adjust) * speed.getValue());
         } else {
-            // THUẬT TOÁN PLUS - Bypass Practice (Sử dụng Magnet Vector)
+            // THUẬT TOÁN PLUS (PRACTICE BYPASS)
             double diffX = target.getX() - mc.player.getX();
             double diffZ = target.getZ() - mc.player.getZ();
             double dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
 
-            // Vector toán học ép quỹ đạo tròn hoàn hảo (Exosware logic)
             double motionX = (diffX / dist) * (dist - distance.getValue()) + (diffZ / dist) * speed.getValue() * direction;
             double motionZ = (diffZ / dist) * (dist - distance.getValue()) - (diffX / dist) * speed.getValue() * direction;
 
@@ -87,7 +87,6 @@ public class TargetStrafe extends Module {
         double z = target.getZ() - mc.player.getZ();
         
         if (predict.getValue()) {
-            // Predict vị trí dựa trên DeltaMovement để tránh bị trễ packet
             x += (target.getX() - target.prevX) * 2.5;
             z += (target.getZ() - target.prevZ) * 2.5;
         }
