@@ -1,7 +1,6 @@
 package thunder.hack.injection;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
@@ -12,15 +11,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args; // IMPORT QUAN TRỌNG Ở ĐÂY
 import thunder.hack.ThunderHack;
 import thunder.hack.core.manager.client.ModuleManager;
 import thunder.hack.events.impl.EventFixVelocity;
 import thunder.hack.features.modules.Module;
 import thunder.hack.features.modules.combat.HitBox;
-import thunder.hack.features.modules.render.Shaders;
 import thunder.hack.features.modules.render.Trails;
 import thunder.hack.utility.interfaces.IEntity;
 
@@ -101,6 +99,4 @@ public abstract class MixinEntity implements IEntity {
             cir.setReturnValue(false);
         }
     }
-
-    // --- ĐÃ XÓA PHẦN CHANGE LOOK DIRECTION GÂY LỖI ---
-}
+                                       }
