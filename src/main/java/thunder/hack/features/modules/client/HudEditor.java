@@ -12,7 +12,10 @@ public final class HudEditor extends Module {
     public static final Setting<Boolean> sticky = new Setting<>("Sticky", true);
     public static final Setting<HudStyle> hudStyle = new Setting<>("HudStyle", HudStyle.Blurry);
     public static final Setting<ArrowsStyle> arrowsStyle = new Setting<>("ArrowsStyle", ArrowsStyle.Default);
-    public static final Setting<ClickGui.colorModeEn> colorMode = new Setting<>("ColorMode", ClickGui.colorModeEn.Static);
+    
+    // Đã dọn dẹp enum chỉ còn các mode cần thiết
+    public static final Setting<ClickGui.colorModeEn> colorMode = new Setting<>("ColorMode", ClickGui.colorModeEn.Frosbut);
+    
     public static final Setting<Integer> colorSpeed = new Setting<>("ColorSpeed", 18, 2, 54);
     public static final Setting<Boolean> glow = new Setting<>("Light", true);
     public static final Setting<ColorSetting> hcolor1 = new Setting<>("Color", new ColorSetting(-6974059));
@@ -39,17 +42,20 @@ public final class HudEditor extends Module {
         Color c2 = acolor.getValue().getColorObject();
 
         return switch (colorMode.getValue()) {
-            case Sky -> Render2DEngine.skyRainbow(speed, count);
-            case LightRainbow -> Render2DEngine.rainbow(speed, count, 0.6f, 1f, 1f);
-            case Rainbow -> Render2DEngine.rainbow(speed, count, 1f, 1f, 1f);
             case Fade -> Render2DEngine.fade(speed, count, c1, 1);
             case DoubleColor -> Render2DEngine.TwoColoreffect(c1, c2, speed, count);
             
-            // CHẾ ĐỘ MÀU RIÊNG (Thay thế Analogous)
             case Analogous -> {
-                Color neon1 = new Color(0, 251, 255); // Xanh sáng Neon
-                Color neon2 = new Color(0, 68, 255);  // Xanh Blue đậm
+                Color neon1 = new Color(0, 251, 255);
+                Color neon2 = new Color(0, 68, 255);
                 yield Render2DEngine.TwoColoreffect(neon1, neon2, speed, count);
+            }
+
+            // MÀU FROSBUT MỚI
+            case Frosbut -> {
+                Color frost1 = new Color(0x00B517); // #00B517
+                Color frost2 = new Color(0x2A2E2A); // #2A2E2A
+                yield Render2DEngine.TwoColoreffect(frost1, frost2, speed, count);
             }
             
             default -> c1;
@@ -58,7 +64,9 @@ public final class HudEditor extends Module {
 
     @Override
     public void onEnable() {
-        mc.setScreen(HudEditorGui.getHudGui());
+        if(mc.world != null && mc.player != null) {
+            mc.setScreen(HudEditorGui.getHudGui());
+        }
         disable();
     }
 
