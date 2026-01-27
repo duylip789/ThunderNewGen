@@ -44,10 +44,10 @@ public class Animations extends Module {
         Default, Smooth, Fade, Self, Old, 
     }
 
-    public boolean shouldAnimate() {
+        public boolean shouldAnimate() {
         return isEnabled()
-                && (!onlyaura.getValue() || ModuleManager.aura.isEnabled() && Aura.target != null)
-    }
+                && (!onlyaura.getValue() || ModuleManager.aura.isEnabled() && Aura.target != null);
+        }
 
     public boolean shouldChangeAnimationDuration() {
         return isEnabled()
