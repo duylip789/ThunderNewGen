@@ -168,8 +168,6 @@ public class Animations extends Module {
                 //    applySwingOffset(matrices, arm, swingProgress);//*
                 }
             }
-        }
-
  public void renderFirstPersonItemCustom(AbstractClientPlayerEntity player, float tickDelta, float pitch, Hand hand, float swingProgress, ItemStack item, float equipProgress, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
         if (!player.isUsingSpyglass()) {
             boolean bl = hand == Hand.MAIN_HAND;
@@ -376,4 +374,5 @@ public class Animations extends Module {
         if (ModuleManager.viewModel.isEnabled())
             matrices.translate(ModuleManager.viewModel.positionMainX.getValue(), -ModuleManager.viewModel.positionMainY.getValue(), -ModuleManager.viewModel.positionMainZ.getValue());
     }
+}
 }
