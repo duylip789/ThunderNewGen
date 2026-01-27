@@ -375,4 +375,3 @@ public class Animations extends Module {
             matrices.translate(ModuleManager.viewModel.positionMainX.getValue(), -ModuleManager.viewModel.positionMainY.getValue(), -ModuleManager.viewModel.positionMainZ.getValue());
     }
 }
-}
