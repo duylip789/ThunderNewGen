@@ -47,7 +47,6 @@ public class Animations extends Module {
     public boolean shouldAnimate() {
         return isEnabled()
                 && (!onlyaura.getValue() || ModuleManager.aura.isEnabled() && Aura.target != null)
-                && mode.getValue() != Mode.Normal;
     }
 
     public boolean shouldChangeAnimationDuration() {
