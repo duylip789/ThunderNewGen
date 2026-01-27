@@ -13,7 +13,6 @@ public final class HudEditor extends Module {
     public static final Setting<HudStyle> hudStyle = new Setting<>("HudStyle", HudStyle.Blurry);
     public static final Setting<ArrowsStyle> arrowsStyle = new Setting<>("ArrowsStyle", ArrowsStyle.Default);
     
-    // Đã dọn dẹp enum chỉ còn các mode cần thiết
     public static final Setting<ClickGui.colorModeEn> colorMode = new Setting<>("ColorMode", ClickGui.colorModeEn.Frosbut);
     
     public static final Setting<Integer> colorSpeed = new Setting<>("ColorSpeed", 18, 2, 54);
@@ -51,10 +50,10 @@ public final class HudEditor extends Module {
                 yield Render2DEngine.TwoColoreffect(neon1, neon2, speed, count);
             }
 
-            // MÀU FROSBUT MỚI
+            // MÀU FROSBUT MỚI ĐÃ CẬP NHẬT
             case Frosbut -> {
-                Color frost1 = new Color(0x00B517); // #00B517
-                Color frost2 = new Color(0x2A2E2A); // #2A2E2A
+                Color frost1 = new Color(0x00FFE0); // #00FFE0
+                Color frost2 = new Color(0x005458); // #005458
                 yield Render2DEngine.TwoColoreffect(frost1, frost2, speed, count);
             }
             
