@@ -39,8 +39,8 @@ public class VHat extends Module {
         }
 
         // Tăng độ đậm (Alpha) để nón nhìn rõ hơn
-        int alphaTop = 240; // Đỉnh nón rất đậm
-        int alphaBot = 180; // Vành nón hơi nhạt hơn xíu để tạo khối 3D
+        int alphaTop = 360; // Đỉnh nón rất đậm
+        int alphaBot = 360; // Vành nón hơi nhạt hơn xíu để tạo khối 3D
 
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player.isInvisible() || player.isSpectator()) continue;
