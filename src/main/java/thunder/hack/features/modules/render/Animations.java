@@ -148,24 +148,24 @@ public class Animations extends Module {
                 translateBack(matrices);
             }
                 
-                    translateToViewModel(matrices);
-                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(45));
-                    matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(g * -85.0F));
+                    //*translateToViewModel(matrices);
+              //      matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(45));
+                  //  matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(g * -85.0F));
+//
+                 //   if (ModuleManager.viewModel.isEnabled())
+              //          matrices.translate(-0.1F * ModuleManager.viewModel.scaleMain.getValue(), 0.28F * ModuleManager.viewModel.scaleMain.getValue(), 0.2F * ModuleManager.viewModel.scaleMain.getValue());
+                 //   else
+            //   //         matrices.translate(-0.1F, 0.28F, 0.2F);
 
-                    if (ModuleManager.viewModel.isEnabled())
-                        matrices.translate(-0.1F * ModuleManager.viewModel.scaleMain.getValue(), 0.28F * ModuleManager.viewModel.scaleMain.getValue(), 0.2F * ModuleManager.viewModel.scaleMain.getValue());
-                    else
-                        matrices.translate(-0.1F, 0.28F, 0.2F);
-
-                    matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-85.0F));
-                    translateBack(matrices);
-                } else {
-                    float n = -0.4f * MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI);
-                    float m = 0.2f * MathHelper.sin(MathHelper.sqrt(swingProgress) * ((float) Math.PI * 2));
-                    float f1 = -0.2f * MathHelper.sin(swingProgress * (float) Math.PI);
-                    matrices.translate(n, m, f1);
-                    applyEquipOffset(matrices, arm, equipProgress);
-                    applySwingOffset(matrices, arm, swingProgress);
+          //          matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-85.0F));
+        //            translateBack(matrices);
+              //  } else {
+      //              float n = -0.4f * MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI);
+               //     float m = 0.2f * MathHelper.sin(MathHelper.sqrt(swingProgress) * ((float) Math.PI * 2));
+                //    float f1 = -0.2f * MathHelper.sin(swingProgress * (float) Math.PI);
+               //     matrices.translate(n, m, f1);
+                //    applyEquipOffset(matrices, arm, equipProgress);
+                //    applySwingOffset(matrices, arm, swingProgress);//*
                 }
             }
         }
