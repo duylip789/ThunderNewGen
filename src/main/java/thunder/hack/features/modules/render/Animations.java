@@ -35,6 +35,7 @@ public class Animations extends Module {
     public Setting<Boolean> oldAnimationsOff = new Setting<>("DisableSwapOff", true);
     private final Setting<Mode> mode = new Setting<Mode>("Mode", Mode.Default);
     public static Setting<Boolean> slowAnimation = new Setting<>("SlowAnimation", true);
+    public final Setting<Float> power = new Setting<>("Power", 7.0f, 0.1f, 15.0f);
     public static Setting<Integer> slowAnimationVal = new Setting<>("SlowValue", 12, 1, 50);
 
     public boolean flip;
@@ -123,7 +124,31 @@ public class Animations extends Module {
                 matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(110f));
                 translateBack(matrices);
             }
-
+             case Old -> {
+    // 1. Độ hạ thấp của item khi rút ra/cất vào
+    applyEquipOffset(matrices, arm, equipProgress);
+    // 2. Đồng bộ với vị trí tay của ViewModel
+    translateToViewModel(matrices);
+    // 3. Tính toán độ vung (Swing)
+    float swing = MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI); 
+    // 4. LOGIC PULL DOWN (Kéo kiếm xuống)
+    // Power càng cao kiếm càng tụt xuống sâu (trục Y âm)
+    float pullDown = swing * (power.getValue() / 10.0f); 
+    matrices.translate(0.0f, -pullDown, 0.0f);
+    // Xác định hướng xoay (Phải: 1, Trái: -1)
+    int i = (arm == Arm.RIGHT) ? 1 : -1;
+    // 5. XOAY KIẾM (Giống 1.8 và ảnh bro gửi)
+    // Xoay ngang
+    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((float) i * (45.0F + swing * -20.0F))); 
+    // Độ chúi của mũi kiếm (Trục Z)
+    matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees((float) i * swing * -20.0F)); 
+    // Độ gập của cổ tay (Trục X)
+    matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(swing * -80.0F));
+    // Trả về góc nhìn chuẩn
+    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((float) i * -45.0F)); 
+    translateBack(matrices);
+            }
+                
                     translateToViewModel(matrices);
                     matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(45));
                     matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(g * -85.0F));
