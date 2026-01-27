@@ -34,8 +34,8 @@ public class Animations extends Module {
     public Setting<Boolean> oldAnimationsM = new Setting<>("DisableSwapMain", true);
     public Setting<Boolean> oldAnimationsOff = new Setting<>("DisableSwapOff", true);
     private final Setting<Mode> mode = new Setting<Mode>("Mode", Mode.Default);
-    public static Setting<Boolean> slowAnimation = new Setting<>("SlowAnimation", true);
     public final Setting<Float> power = new Setting<>("Power", 7.0f, 0.1f, 15.0f);
+    public static Setting<Boolean> slowAnimation = new Setting<>("SlowAnimation", true);
     public static Setting<Integer> slowAnimationVal = new Setting<>("SlowValue", 12, 1, 50);
 
     public boolean flip;
@@ -76,7 +76,7 @@ public class Animations extends Module {
     }
 
     private void renderSwordAnimation(MatrixStack matrices, float f, float swingProgress, float equipProgress, Arm arm) {
-        if (arm == Arm.LEFT && (mode.getValue() == Mode.Eleven || mode.getValue() == Mode.Ten || mode.getValue() == Mode.Nine || mode.getValue() == Mode.Three || mode.getValue() == Mode.Thirteen || mode.getValue() == Mode.Fourteen)) {
+            if (arm == Arm.LEFT && mode.getValue() == Mode.Default) {
             applyEquipOffset(matrices, arm, equipProgress);
             matrices.translate(-ModuleManager.viewModel.positionMainX.getValue(), ModuleManager.viewModel.positionMainY.getValue(), ModuleManager.viewModel.positionMainZ.getValue());
             applySwingOffset(matrices, arm, swingProgress);
@@ -85,13 +85,36 @@ public class Animations extends Module {
         }
 
 
-        switch (mode.getValue()) {
+                switch (mode.getValue()) {
             case Default -> {
                 applyEquipOffset(matrices, arm, equipProgress);
                 translateToViewModelOff(matrices);
                 applySwingOffset(matrices, arm, swingProgress);
                 translateBacklOff(matrices);
             }
+
+            case Old -> {
+                // Kéo kiếm xuống sát tay
+                applyEquipOffset(matrices, arm, equipProgress);
+                translateToViewModel(matrices);
+
+                float swing = MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI);
+                
+                // Dòng quan trọng: Kéo kiếm xuống dựa trên Power
+                float pullDown = swing * (power.getValue() / 10.0f); 
+                matrices.translate(0.0f, -pullDown, 0.0f);
+
+                int i = arm == Arm.RIGHT ? 1 : -1;
+
+                // Các dòng xoay tạo animation chém xuống như ảnh
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((float) i * (45.0F + swing * -20.0F)));
+                matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees((float) i * swing * -20.0F));
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(swing * -80.0F));
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((float) i * -45.0F));
+
+                translateBack(matrices);
+            }
+     //   } // Dấu đóng ngoặc cuối cùng của switch
             case Smooth -> {
                 float n = -0.4F * MathHelper.sin(MathHelper.sqrt(swingProgress) * 3.1415927F);
                 applyEquipOffset(matrices, arm, n);
@@ -123,30 +146,6 @@ public class Animations extends Module {
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-60f * g - 50));
                 matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(110f));
                 translateBack(matrices);
-            }
-             case Old -> {
-    // 1. Độ hạ thấp của item khi rút ra/cất vào
-    applyEquipOffset(matrices, arm, equipProgress);
-    // 2. Đồng bộ với vị trí tay của ViewModel
-    translateToViewModel(matrices);
-    // 3. Tính toán độ vung (Swing)
-    float swing = MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI); 
-    // 4. LOGIC PULL DOWN (Kéo kiếm xuống)
-    // Power càng cao kiếm càng tụt xuống sâu (trục Y âm)
-    float pullDown = swing * (power.getValue() / 10.0f); 
-    matrices.translate(0.0f, -pullDown, 0.0f);
-    // Xác định hướng xoay (Phải: 1, Trái: -1)
-    int i = (arm == Arm.RIGHT) ? 1 : -1;
-    // 5. XOAY KIẾM (Giống 1.8 và ảnh bro gửi)
-    // Xoay ngang
-    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((float) i * (45.0F + swing * -20.0F))); 
-    // Độ chúi của mũi kiếm (Trục Z)
-    matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees((float) i * swing * -20.0F)); 
-    // Độ gập của cổ tay (Trục X)
-    matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(swing * -80.0F));
-    // Trả về góc nhìn chuẩn
-    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((float) i * -45.0F)); 
-    translateBack(matrices);
             }
                 
                     translateToViewModel(matrices);
