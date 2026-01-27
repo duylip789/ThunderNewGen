@@ -171,7 +171,7 @@ public class Animations extends Module {
         }
     }
 
-
+}
     public void renderFirstPersonItemCustom(AbstractClientPlayerEntity player, float tickDelta, float pitch, Hand hand, float swingProgress, ItemStack item, float equipProgress, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
         if (!player.isUsingSpyglass()) {
             boolean bl = hand == Hand.MAIN_HAND;
