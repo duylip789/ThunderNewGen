@@ -585,6 +585,7 @@ public class Aura extends Module {
             case NurikZapen -> CaptureMark.render(target);
             case ThunderHackV2 -> Render3DEngine.renderGhosts(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
             case ThunderHack -> Render3DEngine.drawTargetEsp(stack, target);
+            case NewGen -> Render3DEngine.ghost(espLength.getValue(), espFactor.getValue(), espShaking.getValue(), espAmplitude.getValue(), target);
         }
 
         if (clientLook.getValue() && rotationMode.getValue() != Mode.None) {
@@ -906,7 +907,7 @@ public class Aura extends Module {
     }
 
     public enum ESP {
-        Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2
+        Off, ThunderHack, NurikZapen, CelkaPasta, ThunderHackV2, NewGen
     }
 
     public enum AccelerateOnHit {
