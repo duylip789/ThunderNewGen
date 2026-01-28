@@ -602,7 +602,6 @@ public class Aura extends Module {
         float dst = getRange();
         dst += aimRange.getValue();
         if ((mc.player.isFallFlying() || ModuleManager.elytraPlus.isEnabled()) && target != null) dst += 4f;
-        if (ModuleManager.strafe.isEnabled()) dst += 4f;
         if (rotationMode.getValue() != Mode.Track || rayTrace.getValue() == RayTrace.OFF)
             dst = getRange();
 
