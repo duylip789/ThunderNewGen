@@ -722,6 +722,82 @@ public class Render3DEngine {
         stack.pop();
     }
 
+        // Phương thức render mới tạo vệt sáng mảnh và dài theo ảnh mẫu
+    public static void ghost(int espLength, int factor, float shaking, float amplitude, Entity target) {
+        if (target == null) return;
+
+        Camera camera = mc.gameRenderer.getCamera();
+        // Lấy vị trí nội suy của mục tiêu
+        double tPosX = Render2DEngine.interpolate(target.prevX, target.getX(), getTickDelta()) - camera.getPos().x;
+        double tPosY = Render2DEngine.interpolate(target.prevY, target.getY(), getTickDelta()) - camera.getPos().y;
+        double tPosZ = Render2DEngine.interpolate(target.prevZ, target.getZ(), getTickDelta()) - camera.getPos().z;
+        float iAge = (float) Render2DEngine.interpolate(target.age - 1, target.age, getTickDelta());
+
+        // Thiết lập hệ thống render phát sáng (Additive Blending)
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
+        
+        // Sử dụng texture firefly của ThunderHack
+        RenderSystem.setShaderTexture(0, TextureStorage.firefly);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+
+        // Xử lý hiển thị xuyên tường hoặc không
+        boolean canSee = mc.player.canSee(target);
+        if (canSee) {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthMask(false);
+        } else {
+            RenderSystem.disableDepthTest();
+        }
+
+        // Vẽ 3 dải sáng xoắn ốc
+        for (int j = 0; j < 3; j++) {
+            for (int i = 0; i <= espLength; i++) {
+                float offset = ((float) i / espLength);
+                // Tính toán quỹ đạo xoay và độ rung
+                double radians = Math.toRadians((((float) i / 1.5f + iAge) * factor + (j * 120)) % (factor * 360));
+                double sinQuad = Math.sin(Math.toRadians(iAge * 2.5f + i * (j + 1)) * amplitude) / shaking;
+
+                MatrixStack matrices = new MatrixStack();
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0F));
+                
+                // Di chuyển đến vị trí quanh mục tiêu
+                matrices.translate(tPosX + Math.cos(radians) * target.getWidth(), (tPosY + 1 + sinQuad), tPosZ + Math.sin(radians) * target.getWidth());
+                
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+                
+                Matrix4f matrix = matrices.peek().getPositionMatrix();
+                
+                // Màu sắc: Sử dụng màu trắng mờ dần ở đuôi để giống ảnh nhất
+                int color = Render2DEngine.applyOpacity(Color.WHITE, offset * 0.5f).getRGB();
+
+                // THÔNG SỐ QUAN TRỌNG: Làm vệt sáng cực mảnh (0.02) và rất dài (1.8) để tạo hiệu ứng vuốt đuôi
+                float ghostWidth = 0.02f; 
+                float ghostLength = 1.8f;
+
+                buffer.vertex(matrix, -ghostLength, ghostWidth, 0).texture(0f, 1f).color(color);
+                buffer.vertex(matrix, ghostLength, ghostWidth, 0).texture(1f, 1f).color(color);
+                buffer.vertex(matrix, ghostLength, -ghostWidth, 0).texture(1f, 0).color(color);
+                buffer.vertex(matrix, -ghostLength, -ghostWidth, 0).texture(0f, 0).color(color);
+            }
+        }
+
+        // Kết thúc build và render
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
+
+        if (canSee) {
+            RenderSystem.depthMask(true);
+            RenderSystem.disableDepthTest();
+        } else {
+            RenderSystem.enableDepthTest();
+        }
+        RenderSystem.disableBlend();
+    }
+
+
     // Kalry не пасть
     // anti yg protection
     public static void renderGhosts(int espLength, int factor, float shaking, float amplitude, Entity target) {
