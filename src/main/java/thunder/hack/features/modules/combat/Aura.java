@@ -65,11 +65,10 @@ import static thunder.hack.utility.math.MathUtility.random;
 
 public class Aura extends Module {
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
-    public final Setting<Float> wallRange = new Setting<>("ThroughWallsRange", 3.1f, 0f, 6.0f);
-    public final Setting<Boolean> elytra = new Setting<>("ElytraOverride",false);
+    public final Setting<Float> wallRange = new Setting<>("WallsRange", 3.1f, 0f, 6.0f);
+    public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f);
     public final Setting<Float> elytraAttackRange = new Setting<>("ElytraRange", 3.1f, 1f, 6.0f, v -> elytra.getValue());
-    public final Setting<Float> elytraWallRange = new Setting<>("ElytraThroughWallsRange", 3.1f, 0f, 6.0f,v -> elytra.getValue());
-    public final Setting<WallsBypass> wallsBypass = new Setting<>("WallsBypass", WallsBypass.Off, v -> getWallRange() > 0);
+    public final Setting<Float> elytraWallRange = new Setting<>("ElytraAimRange", 3.1f, 0f, 6.0f,v -> elytra.getValue());
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
     public final Setting<Integer> interactTicks = new Setting<>("InteractTicks", 3, 1, 10, v -> rotationMode.getValue() == Mode.Interact);
@@ -100,7 +99,6 @@ public class Aura extends Module {
 
     /*   ADVANCED   */
     public final Setting<SettingGroup> advanced = new Setting<>("Advanced", new SettingGroup(false, 0));
-    public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f).addToGroup(advanced);
     public final Setting<Boolean> randomHitDelay = new Setting<>("RandomHitDelay", false).addToGroup(advanced);
     public final Setting<Boolean> pauseInInventory = new Setting<>("PauseInInventory", true).addToGroup(advanced);
     public final Setting<Boolean> dropSprint = new Setting<>("DropSprint", true).addToGroup(advanced);
