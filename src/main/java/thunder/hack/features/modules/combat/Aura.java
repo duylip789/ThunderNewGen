@@ -67,8 +67,6 @@ public class Aura extends Module {
     public final Setting<Float> attackRange = new Setting<>("Range", 3.1f, 1f, 6.0f);
     public final Setting<Float> wallRange = new Setting<>("WallsRange", 3.1f, 0f, 6.0f);
     public final Setting<Float> aimRange = new Setting<>("AimRange", 3.1f, 0f, 6.0f);
-    public final Setting<Float> elytraAttackRange = new Setting<>("ElytraRange", 3.1f, 1f, 6.0f, v -> elytra.getValue());
-    public final Setting<Float> elytraWallRange = new Setting<>("ElytraAimRange", 3.1f, 0f, 6.0f,v -> elytra.getValue());
     public final Setting<Integer> fov = new Setting<>("FOV", 180, 1, 180);
     public final Setting<Mode> rotationMode = new Setting<>("RotationMode", Mode.Track);
     public final Setting<Integer> interactTicks = new Setting<>("InteractTicks", 3, 1, 10, v -> rotationMode.getValue() == Mode.Interact);
@@ -165,13 +163,6 @@ public class Aura extends Module {
 
     public Aura() {
         super("Aura", Category.COMBAT);
-    }
-
-    private float getRange(){
-        return elytra.getValue() && mc.player.isFallFlying() ? elytraAttackRange.getValue() : attackRange.getValue();
-    }
-    private float getWallRange(){
-        return elytra.getValue() && mc.player != null && mc.player.isFallFlying() ? elytraWallRange.getValue() : wallRange.getValue();
     }
 
     public void auraLogic() {
@@ -539,7 +530,7 @@ public class Aura extends Module {
         if (ready)
             switch (accelerateOnHit.getValue()) {
                 case Yaw -> yawStep = 180f;
-                case Pitch -> pitchStep = 90f;
+               // case Pitch -> pitchStep = 90f;
                 case Both -> {
                     yawStep = 180f;
                     pitchStep = 90f;
@@ -670,8 +661,8 @@ public class Aura extends Module {
         float[] rotation;
 
         // Если мы перестали смотреть на цель
-        if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
-            float[] rotation1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
+      //  if (!Managers.PLAYER.checkRtx(rotationYaw, rotationPitch, getRange(), getWallRange(), rayTrace.getValue())) {
+          //  float[] rotation1 = Managers.PLAYER.calcAngle(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0));
 
             // Проверяем видимость центра игрока
             if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2f, 0)) <= attackRange.getPow2Value()
