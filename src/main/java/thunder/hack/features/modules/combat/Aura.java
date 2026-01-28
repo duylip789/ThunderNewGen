@@ -693,14 +693,12 @@ public class Aura extends Module {
                 }
             }
         }
-        return target.getPos().add(rotationPoint);
-    }
 
     public boolean isInRange(Entity target) {
 
-        if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) {
-            return false;
-        }
+       // if (PlayerUtility.squaredDistanceFromEyes(target.getPos().add(0, target.getEyeHeight(target.getPose()), 0)) > getSquaredRotateDistance() + 4) {
+     //       return false;
+  //      }
 
         float[] rotation;
         float halfBox = (float) (target.getBoundingBox().getLengthX() / 2f);
@@ -905,4 +903,3 @@ public class Aura extends Module {
     public enum WallsBypass {
         Off, V1, V2
     }
-}
