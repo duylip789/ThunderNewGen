@@ -903,3 +903,4 @@ public class Aura extends Module {
     public enum WallsBypass {
         Off, V1, V2
     }
+}
