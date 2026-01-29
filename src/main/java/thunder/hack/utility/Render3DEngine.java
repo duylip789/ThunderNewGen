@@ -737,7 +737,6 @@ public class Render3DEngine {
     Camera camera = mc.gameRenderer.getCamera();
     if (camera == null) return;
 
-    float hitProgress = 0;
     float delta = mc.getRenderTickCounter().getTickDelta(true);
     Vec3d camPos = camera.getPos();
 
@@ -778,8 +777,10 @@ public class Render3DEngine {
             matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
 
             Matrix4f matrix = matrices.peek().getPositionMatrix();
-            int baseColor = ColorUtil.getColorStyle((int) (180 * offset));
-            int color = ColorUtil.applyOpacity(baseColor, offset * ghostAlpha);
+            
+            // Sử dụng Render2DEngine thay cho ColorUtil nếu ColorUtil bị lỗi symbol
+            int baseColor = Render2DEngine.skyRainbow(i * 10, 0.5f, 1f); 
+            int color = Render2DEngine.applyOpacity(baseColor, offset * ghostAlpha);
             float scale = offset * 0.1f;
 
             buffer.vertex(matrix, -scale, scale, 0).texture(0f, 1f).color(color);
@@ -789,7 +790,8 @@ public class Render3DEngine {
         }
     }
 
-    BufferUtils.endBuffer(buffer);
+    // Fix lỗi BufferUtils bằng lệnh draw chuẩn
+    BufferRenderer.drawWithGlobalProgram(buffer.end());
 
     if (canSee) {
         RenderSystem.depthMask(true);
@@ -797,6 +799,8 @@ public class Render3DEngine {
         RenderSystem.enableDepthTest();
     }
     RenderSystem.disableBlend();
+        
+
         
 
 
