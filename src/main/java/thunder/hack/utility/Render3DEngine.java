@@ -732,75 +732,71 @@ public class Render3DEngine {
 
         // Phương thức render mới tạo vệt sáng mảnh và dài theo ảnh mẫu
     public static void ghost(int espLength, int factor, float shaking, float amplitude, Entity target) {
-        if (target == null) return;
+            if (target == null) return;
 
-        Camera camera = mc.gameRenderer.getCamera();
-        if (camera == null) return;
-        float hitProgress = RayTraceUtil.getHitProgress(target);
-        float delta = mc.getRenderTickCounter().getTickDelta(true);
-        Vec3d camPos = camera.getPos();
-        double tX = interpolate(target.prevX, target.getX(), delta) - camPos.x;
-        double tY = interpolate(target.prevY, target.getY(), delta) - camPos.y;
-        double tZ = interpolate(target.prevZ, target.getZ(), delta) - camPos.z;
-        float age = interpolateFloat(target.age - 1, target.age, delta);
+    Camera camera = mc.gameRenderer.getCamera();
+    if (camera == null) return;
 
-        boolean canSee = mc.player.canSee(target);
+    float hitProgress = 0;
+    float delta = mc.getRenderTickCounter().getTickDelta(true);
+    Vec3d camPos = camera.getPos();
 
-        RenderUtil.enableRender(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
-        RenderSystem.setShaderTexture(0, ResourceProvider.firefly);
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
-        if (canSee) {
-            RenderSystem.enableDepthTest();
-            RenderSystem.depthMask(false);
-        } else {
-            RenderSystem.disableDepthTest();
-        }
+    double tX = MathHelper.lerp(delta, target.prevX, target.getX()) - camPos.x;
+    double tY = MathHelper.lerp(delta, target.prevY, target.getY()) - camPos.y;
+    double tZ = MathHelper.lerp(delta, target.prevZ, target.getZ()) - camPos.z;
+    float age = (float) MathHelper.lerp(delta, target.age - 1, target.age);
 
-        BufferBuilder buffer = IMinecraft.tessellator().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
-        float pitch = camera.getPitch();
-        float yaw = camera.getYaw();
-        float ghostAlpha = (float) animation.getOutput();
+    boolean canSee = mc.player.canSee(target);
 
-        for (int j = 0; j < 3; j++) {
-            for (int i = 0; i <= espLength; i++) {
-                float offset = (float) i / espLength;
-                double radians = Math.toRadians(((i / 1.5f + age) * factor + j * 120) % (factor * 360));
-                double sinQuad = Math.sin(Math.toRadians(age * 2.5f + i * (j + 1)) * amplitude) / shaking;
+    RenderSystem.enableBlend();
+    RenderSystem.defaultBlendFunc();
+    RenderSystem.setShaderTexture(0, ResourceProvider.firefly);
+    RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
 
-                MatrixStack matrices = new MatrixStack();
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(yaw + 180f));
-                matrices.translate(tX + Math.cos(radians) * target.getWidth(), tY + 1 + sinQuad, tZ + Math.sin(radians) * target.getWidth());
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-yaw));
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
-
-                Matrix4f matrix = matrices.peek().getPositionMatrix();
-                int baseColor;
-                if (hitProgress > 0) {
-                    baseColor = Color.RED.getRGB();
-                } else {
-                    baseColor = ColorUtil.getColorStyle((int) (180 * offset));
-                }
-
-                int color = applyOpacity(baseColor, offset * ghostAlpha);
-
-                float scale = SCALE_CACHE[Math.min((int)(offset * 100), 100)];
-                buffer.vertex(matrix, -scale,  scale, 0).texture(0f, 1f).color(color);
-                buffer.vertex(matrix,  scale,  scale, 0).texture(1f, 1f).color(color);
-                buffer.vertex(matrix,  scale, -scale, 0).texture(1f, 0).color(color);
-                buffer.vertex(matrix, -scale, -scale, 0).texture(0f, 0).color(color);
-            }
-        }
-        RenderUtil.render3D.endBuilding(buffer);
-
-        if (canSee) {
-            RenderSystem.depthMask(true);
-            RenderSystem.disableDepthTest();
-        } else {
-            RenderSystem.enableDepthTest();
-        }
-        RenderSystem.disableBlend();
+    if (canSee) {
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(false);
+    } else {
+        RenderSystem.disableDepthTest();
     }
+
+    BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+    float pitch = camera.getPitch();
+    float yaw = camera.getYaw();
+    float ghostAlpha = 1.0f;
+
+    for (int j = 0; j < 3; j++) {
+        int espLen = 14;
+        for (int i = 0; i <= espLen; i++) {
+            float offset = (float) i / espLen;
+            double radians = Math.toRadians(((i / 1.5f + age) * 8 + j * 120) % (8 * 360));
+            double sinQuad = Math.sin(Math.toRadians(age * 2.5f + i * (j + 1)) * 3.0f) / 1.8f;
+
+            MatrixStack matrices = new MatrixStack();
+            matrices.translate(tX + Math.cos(radians) * target.getWidth(), tY + 1 + sinQuad, tZ + Math.sin(radians) * target.getWidth());
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-yaw));
+            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
+
+            Matrix4f matrix = matrices.peek().getPositionMatrix();
+            int baseColor = ColorUtil.getColorStyle((int) (180 * offset));
+            int color = ColorUtil.applyOpacity(baseColor, offset * ghostAlpha);
+            float scale = offset * 0.1f;
+
+            buffer.vertex(matrix, -scale, scale, 0).texture(0f, 1f).color(color);
+            buffer.vertex(matrix, scale, scale, 0).texture(1f, 1f).color(color);
+            buffer.vertex(matrix, scale, -scale, 0).texture(1f, 0).color(color);
+            buffer.vertex(matrix, -scale, -scale, 0).texture(0f, 0).color(color);
+        }
+    }
+
+    BufferUtils.endBuffer(buffer);
+
+    if (canSee) {
+        RenderSystem.depthMask(true);
+    } else {
+        RenderSystem.enableDepthTest();
+    }
+    RenderSystem.disableBlend();
         
 
 
