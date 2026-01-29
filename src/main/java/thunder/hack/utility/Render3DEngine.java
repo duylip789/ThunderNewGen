@@ -732,73 +732,79 @@ public class Render3DEngine {
 
         // Phương thức render mới tạo vệt sáng mảnh và dài theo ảnh mẫu
     public static void ghost(int espLength, int factor, float shaking, float amplitude, Entity target) {
-            if (target == null) return;
+                if (target == null) return;
 
-    Camera camera = mc.gameRenderer.getCamera();
-    if (camera == null) return;
+        Camera camera = mc.gameRenderer.getCamera();
+        if (camera == null) return;
 
-    float delta = mc.getRenderTickCounter().getTickDelta(true);
-    Vec3d camPos = camera.getPos();
+        float delta = mc.getRenderTickCounter().getTickDelta(true);
+        Vec3d camPos = camera.getPos();
 
-    double tX = MathHelper.lerp(delta, target.prevX, target.getX()) - camPos.x;
-    double tY = MathHelper.lerp(delta, target.prevY, target.getY()) - camPos.y;
-    double tZ = MathHelper.lerp(delta, target.prevZ, target.getZ()) - camPos.z;
-    float age = (float) MathHelper.lerp(delta, target.age - 1, target.age);
+        double tX = MathHelper.lerp(delta, target.prevX, target.getX()) - camPos.x;
+        double tY = MathHelper.lerp(delta, target.prevY, target.getY()) - camPos.y;
+        double tZ = MathHelper.lerp(delta, target.prevZ, target.getZ()) - camPos.z;
+        float age = (float) MathHelper.lerp(delta, target.age - 1, target.age);
 
-    boolean canSee = mc.player.canSee(target);
+        boolean canSee = mc.player.canSee(target);
 
-    RenderSystem.enableBlend();
-    RenderSystem.defaultBlendFunc();
-    RenderSystem.setShaderTexture(0, ResourceProvider.firefly);
-    RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        
+        // FIX LỖI 1: Tạm thời comment dòng này lại vì bro thiếu file ResourceProvider
+        // RenderSystem.setShaderTexture(0, ResourceProvider.firefly);
+        
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
 
-    if (canSee) {
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(false);
-    } else {
-        RenderSystem.disableDepthTest();
-    }
-
-    BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
-    float pitch = camera.getPitch();
-    float yaw = camera.getYaw();
-    float ghostAlpha = 1.0f;
-
-    for (int j = 0; j < 3; j++) {
-        int espLen = 14;
-        for (int i = 0; i <= espLen; i++) {
-            float offset = (float) i / espLen;
-            double radians = Math.toRadians(((i / 1.5f + age) * 8 + j * 120) % (8 * 360));
-            double sinQuad = Math.sin(Math.toRadians(age * 2.5f + i * (j + 1)) * 3.0f) / 1.8f;
-
-            MatrixStack matrices = new MatrixStack();
-            matrices.translate(tX + Math.cos(radians) * target.getWidth(), tY + 1 + sinQuad, tZ + Math.sin(radians) * target.getWidth());
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-yaw));
-            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
-
-            Matrix4f matrix = matrices.peek().getPositionMatrix();
-            
-            // Sử dụng Render2DEngine thay cho ColorUtil nếu ColorUtil bị lỗi symbol
-            int baseColor = Render2DEngine.skyRainbow(i * 10, 0.5f, 1f); 
-            int color = Render2DEngine.applyOpacity(baseColor, offset * ghostAlpha);
-            float scale = offset * 0.1f;
-
-            buffer.vertex(matrix, -scale, scale, 0).texture(0f, 1f).color(color);
-            buffer.vertex(matrix, scale, scale, 0).texture(1f, 1f).color(color);
-            buffer.vertex(matrix, scale, -scale, 0).texture(1f, 0).color(color);
-            buffer.vertex(matrix, -scale, -scale, 0).texture(0f, 0).color(color);
+        if (canSee) {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthMask(false);
+        } else {
+            RenderSystem.disableDepthTest();
         }
-    }
 
-    // Fix lỗi BufferUtils bằng lệnh draw chuẩn
-    BufferRenderer.drawWithGlobalProgram(buffer.end());
+        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        float pitch = camera.getPitch();
+        float yaw = camera.getYaw();
+        float ghostAlpha = 1.0f;
 
-    if (canSee) {
-        RenderSystem.depthMask(true);
-    } else {
-        RenderSystem.enableDepthTest();
-    }
-    RenderSystem.disableBlend();
+        for (int j = 0; j < 3; j++) {
+            int espLen = 14;
+            for (int i = 0; i <= espLen; i++) {
+                float offset = (float) i / espLen;
+                double radians = Math.toRadians(((i / 1.5f + age) * 8 + j * 120) % (8 * 360));
+                double sinQuad = Math.sin(Math.toRadians(age * 2.5f + i * (j + 1)) * 3.0f) / 1.8f;
+
+                MatrixStack matrices = new MatrixStack();
+                matrices.translate(tX + Math.cos(radians) * target.getWidth(), tY + 1 + sinQuad, tZ + Math.sin(radians) * target.getWidth());
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-yaw));
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
+
+                Matrix4f matrix = matrices.peek().getPositionMatrix();
+                
+                // FIX LỖI 2: Hàm skyRainbow chỉ nhận 2 số int (Tốc độ, Index)
+                // Đã sửa từ (i * 10, 0.5f, 1f) thành (100, i * 10) để khớp với Render2DEngine của bro
+                int baseColor = Render2DEngine.skyRainbow(100, i * 10); 
+                
+                int color = Render2DEngine.applyOpacity(baseColor, offset * ghostAlpha);
+                float scale = offset * 0.1f;
+
+                buffer.vertex(matrix, -scale, scale, 0).texture(0f, 1f).color(color);
+                buffer.vertex(matrix, scale, scale, 0).texture(1f, 1f).color(color);
+                buffer.vertex(matrix, scale, -scale, 0).texture(1f, 0).color(color);
+                buffer.vertex(matrix, -scale, -scale, 0).texture(0f, 0).color(color);
+            }
+        }
+
+        // Dùng lệnh vẽ chuẩn
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
+
+        if (canSee) {
+            RenderSystem.depthMask(true);
+        } else {
+            RenderSystem.enableDepthTest();
+        }
+        RenderSystem.disableBlend();
+        
         
 
         
