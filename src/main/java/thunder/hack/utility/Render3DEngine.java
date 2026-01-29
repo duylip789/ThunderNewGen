@@ -727,23 +727,20 @@ public class Render3DEngine {
         if (target == null) return;
 
         Camera camera = mc.gameRenderer.getCamera();
-        // Lấy vị trí nội suy của mục tiêu
-        double tPosX = Render2DEngine.interpolate(target.prevX, target.getX(), getTickDelta()) - camera.getPos().x;
-        double tPosY = Render2DEngine.interpolate(target.prevY, target.getY(), getTickDelta()) - camera.getPos().y;
-        double tPosZ = Render2DEngine.interpolate(target.prevZ, target.getZ(), getTickDelta()) - camera.getPos().z;
-        float iAge = (float) Render2DEngine.interpolate(target.age - 1, target.age, getTickDelta());
+        if (camera == null) return;
+        float hitProgress = RayTraceUtil.getHitProgress(target);
+        float delta = mc.getRenderTickCounter().getTickDelta(true);
+        Vec3d camPos = camera.getPos();
+        double tX = interpolate(target.prevX, target.getX(), delta) - camPos.x;
+        double tY = interpolate(target.prevY, target.getY(), delta) - camPos.y;
+        double tZ = interpolate(target.prevZ, target.getZ(), delta) - camPos.z;
+        float age = interpolateFloat(target.age - 1, target.age, delta);
 
-        // Thiết lập hệ thống render phát sáng (Additive Blending)
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
-        
-        // Sử dụng texture firefly của ThunderHack
-        RenderSystem.setShaderTexture(0, TextureStorage.firefly);
-        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
-        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
-
-        // Xử lý hiển thị xuyên tường hoặc không
         boolean canSee = mc.player.canSee(target);
+
+        RenderUtil.enableRender(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE);
+        RenderSystem.setShaderTexture(0, ResourceProvider.firefly);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
         if (canSee) {
             RenderSystem.enableDepthTest();
             RenderSystem.depthMask(false);
@@ -751,42 +748,42 @@ public class Render3DEngine {
             RenderSystem.disableDepthTest();
         }
 
-        // Vẽ 3 dải sáng xoắn ốc
+        BufferBuilder buffer = IMinecraft.tessellator().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        float pitch = camera.getPitch();
+        float yaw = camera.getYaw();
+        float ghostAlpha = (float) animation.getOutput();
+
         for (int j = 0; j < 3; j++) {
             for (int i = 0; i <= espLength; i++) {
-                float offset = ((float) i / espLength);
-                // Tính toán quỹ đạo xoay và độ rung
-                double radians = Math.toRadians((((float) i / 1.5f + iAge) * factor + (j * 120)) % (factor * 360));
-                double sinQuad = Math.sin(Math.toRadians(iAge * 2.5f + i * (j + 1)) * amplitude) / shaking;
+                float offset = (float) i / espLength;
+                double radians = Math.toRadians(((i / 1.5f + age) * factor + j * 120) % (factor * 360));
+                double sinQuad = Math.sin(Math.toRadians(age * 2.5f + i * (j + 1)) * amplitude) / shaking;
 
                 MatrixStack matrices = new MatrixStack();
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0F));
-                
-                // Di chuyển đến vị trí quanh mục tiêu
-                matrices.translate(tPosX + Math.cos(radians) * target.getWidth(), (tPosY + 1 + sinQuad), tPosZ + Math.sin(radians) * target.getWidth());
-                
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(yaw + 180f));
+                matrices.translate(tX + Math.cos(radians) * target.getWidth(), tY + 1 + sinQuad, tZ + Math.sin(radians) * target.getWidth());
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-yaw));
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(pitch));
+
                 Matrix4f matrix = matrices.peek().getPositionMatrix();
-                
-                // Màu sắc: Sử dụng màu trắng mờ dần ở đuôi để giống ảnh nhất
-                int color = Render2DEngine.applyOpacity(Color.WHITE, offset * 0.5f).getRGB();
+                int baseColor;
+                if (hitProgress > 0) {
+                    baseColor = Color.RED.getRGB();
+                } else {
+                    baseColor = ColorUtil.getColorStyle((int) (180 * offset));
+                }
 
-                // THÔNG SỐ QUAN TRỌNG: Làm vệt sáng cực mảnh (0.02) và rất dài (1.8) để tạo hiệu ứng vuốt đuôi
-                float ghostWidth = 0.02f; 
-                float ghostLength = 1.8f;
+                int color = applyOpacity(baseColor, offset * ghostAlpha);
 
-                buffer.vertex(matrix, -ghostLength, ghostWidth, 0).texture(0f, 1f).color(color);
-                buffer.vertex(matrix, ghostLength, ghostWidth, 0).texture(1f, 1f).color(color);
-                buffer.vertex(matrix, ghostLength, -ghostWidth, 0).texture(1f, 0).color(color);
-                buffer.vertex(matrix, -ghostLength, -ghostWidth, 0).texture(0f, 0).color(color);
+                float scale = SCALE_CACHE[Math.min((int)(offset * 100), 100)];
+                buffer.vertex(matrix, -scale,  scale, 0).texture(0f, 1f).color(color);
+                buffer.vertex(matrix,  scale,  scale, 0).texture(1f, 1f).color(color);
+                buffer.vertex(matrix,  scale, -scale, 0).texture(1f, 0).color(color);
+                buffer.vertex(matrix, -scale, -scale, 0).texture(0f, 0).color(color);
             }
         }
-
-        // Kết thúc build và render
-        BufferRenderer.drawWithGlobalProgram(buffer.end());
+        RenderUtil.render3D.endBuilding(buffer);
 
         if (canSee) {
             RenderSystem.depthMask(true);
@@ -796,6 +793,7 @@ public class Render3DEngine {
         }
         RenderSystem.disableBlend();
     }
+        
 
 
     // Kalry не пасть
