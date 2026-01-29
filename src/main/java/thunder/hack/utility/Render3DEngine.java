@@ -783,7 +783,7 @@ public class Render3DEngine {
                 
                 // FIX LỖI 2: Hàm skyRainbow chỉ nhận 2 số int (Tốc độ, Index)
                 // Đã sửa từ (i * 10, 0.5f, 1f) thành (100, i * 10) để khớp với Render2DEngine của bro
-                int baseColor = Render2DEngine.skyRainbow(100, i * 10); 
+                int baseColor = Render2DEngine.skyRainbow(100, i * 10).getRGB();
                 
                 int color = Render2DEngine.applyOpacity(baseColor, offset * ghostAlpha);
                 float scale = offset * 0.1f;
