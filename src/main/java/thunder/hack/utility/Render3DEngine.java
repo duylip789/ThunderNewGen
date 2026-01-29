@@ -2,9 +2,9 @@ package thunder.hack.utility.render;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import thunder.hack.utility.render.RenderUtil;
-import thunder.hack.utility.render.ColorUtil;
-import thunder.hack.utility.interfaces.IMinecraft;
+import thunder.hack.utility.render.Render2DEngine;
+import thunder.hack.utility.render.Render3DEngine;
+import thunder.hack.core.Core;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.BufferBuilder;
