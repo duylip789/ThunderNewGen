@@ -801,7 +801,7 @@ public class Render3DEngine {
 
 
     // Kalry не пасть
-    // anti yg protection
+    }// anti yg protection
     public static void renderGhosts(int espLength, int factor, float shaking, float amplitude, Entity target) {
         Camera camera = mc.gameRenderer.getCamera();
 
